@@ -1,0 +1,297 @@
+import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+
+function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
+  const d = new Date(dateString);
+  let bucketType = 'monthly';
+  
+  if (startDateStr && endDateStr) {
+    const start = new Date(startDateStr).getTime();
+    const end = new Date(endDateStr).getTime();
+    const diffDays = (end - start) / (1000 * 3600 * 24);
+    
+    if (diffDays <= 31) bucketType = 'daily';
+    else if (diffDays <= 90) bucketType = 'weekly';
+    else if (diffDays <= 366) bucketType = 'monthly';
+    else bucketType = 'yearly';
+  }
+
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  
+  if (bucketType === 'daily') {
+    return { label: d.toLocaleDateString('default', { month: 'short', day: 'numeric' }), sortKey: d.getTime() };
+  } else if (bucketType === 'weekly') {
+    const diff = d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1);
+    const weekStart = new Date(d.setDate(diff));
+    return { label: `Wk of ${weekStart.toLocaleDateString('default', { month: 'short', day: 'numeric' })}`, sortKey: weekStart.getTime() };
+  } else if (bucketType === 'yearly') {
+    return { label: y.toString(), sortKey: new Date(y, 0, 1).getTime() };
+  } else {
+    return { label: d.toLocaleDateString('default', { month: 'short', year: '2-digit' }), sortKey: new Date(y, m, 1).getTime() };
+  }
+}
+
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    // Fetch all ledgers to identify liquidity accounts
+    const { data: liquidityLedgers, error: ledgerError } = await supabase
+      .from('ledgers')
+      .select('name, parent_group, closing_balance')
+      .in('parent_group', ['Bank Accounts', 'Cash-in-Hand']);
+    
+    if (ledgerError) throw ledgerError;
+
+    const liquiditySet = new Set((liquidityLedgers || []).map(l => l.name));
+
+    // Fetch all vouchers to scan for cash flow
+    let query = supabase
+      .from('vouchers')
+      .select('*, voucher_ledgers(*), voucher_inventory(*)');
+
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+
+    const { data: vouchers, error } = await query;
+    if (error) throw error;
+    
+    const isAdjusted = searchParams.get('adjusted') === 'true';
+    let activeVouchers = vouchers || [];
+
+    // --- Overlay Manual Adjustments (if requested) ---
+    if (isAdjusted && activeVouchers.length > 0) {
+      const { data: adjustments, error: adjErr } = await supabase
+        .from('manual_adjustments')
+        .select('*')
+        .eq('state', 'approved')
+        .eq('entity_type', 'voucher');
+        
+      if (!adjErr && adjustments && adjustments.length > 0) {
+        const adjMap = new Map();
+        adjustments.forEach(adj => {
+          if (!adjMap.has(adj.entity_id)) adjMap.set(adj.entity_id, {});
+          adjMap.get(adj.entity_id)[adj.field_name] = adj.new_value;
+        });
+
+        activeVouchers = activeVouchers.map((v: any) => {
+          const overrides = adjMap.get(v.tally_guid);
+          if (overrides) {
+            return {
+              ...v,
+              amount: overrides.amount !== undefined ? Number(overrides.amount) : v.amount,
+              is_cancelled: overrides.is_cancelled !== undefined ? (overrides.is_cancelled === 'true') : v.is_cancelled,
+              is_deleted: overrides.is_deleted !== undefined ? (overrides.is_deleted === 'true') : v.is_deleted,
+            };
+          }
+          return v;
+        });
+      }
+    }
+
+    // Fetch outstanding bills for forecasting
+    const { data: outstandings, error: outErr } = await supabase
+      .from('outstanding_bills')
+      .select('pending_amount, due_date, party_ledger, company_name')
+      .gt('pending_amount', 0);
+      
+    if (outErr) throw outErr;
+
+    let totalInflow = 0;
+    let totalOutflow = 0;
+    
+    const timeBuckets: Record<string, { label: string, sortKey: number, inflow: number, outflow: number }> = {};
+    const sourcesMap: Record<string, { name: string, amount: number, count: number }> = {};
+    const usesMap: Record<string, { name: string, amount: number, count: number }> = {};
+    const detailedTransactions: any[] = [];
+
+    for (const v of activeVouchers) {
+      // Analyze liquidity movement in this voucher
+      let liqIn = 0; // Debits to Cash/Bank
+      let liqOut = 0; // Credits to Cash/Bank
+      
+      const nonLiqCredits: any[] = [];
+      const nonLiqDebits: any[] = [];
+
+      (v.voucher_ledgers || []).forEach((l: any) => {
+        const amt = Number(l.amount) || 0;
+        if (liquiditySet.has(l.ledger_name)) {
+          if (l.is_debit) liqIn += amt;
+          else liqOut += amt;
+        } else {
+          if (l.is_debit) nonLiqDebits.push(l);
+          else nonLiqCredits.push(l);
+        }
+      });
+
+      if (liqIn === 0 && liqOut === 0) continue; // Not a cash flow transaction
+
+      const netLiq = liqIn - liqOut;
+      if (netLiq === 0) continue; // Contra entry netting to 0
+
+      const bucket = getTimeBucket(v.date, startDate, endDate);
+      if (!timeBuckets[bucket.label]) timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, inflow: 0, outflow: 0 };
+
+      // Helper to build detailed transaction payload
+      const buildDetail = (type: 'INFLOW' | 'OUTFLOW', ledgerName: string, amount: number) => ({
+         id: v.voucher_number || v.tally_guid.substring(0,8),
+         date: v.date,
+         type,
+         ledger: ledgerName,
+         amount,
+         voucherType: v.voucher_type_name,
+         items: (v.voucher_inventory || []).map((inv: any) => ({
+           product: inv.stock_item_name || "Unknown",
+           qty: inv.billed_qty || 0,
+           rate: inv.rate || 0,
+           amount: inv.amount || 0
+         })),
+         ledgers: (v.voucher_ledgers || []).map((l: any) => ({
+           name: l.ledger_name,
+           amount: Number(l.amount),
+           is_debit: l.is_debit
+         }))
+      });
+
+      if (netLiq > 0) {
+        // Net Inflow! Sources are the non-liquidity credits.
+        totalInflow += netLiq;
+        timeBuckets[bucket.label].inflow += netLiq;
+        
+        let remaining = netLiq;
+        if (nonLiqCredits.length > 0) {
+           nonLiqCredits.forEach(c => {
+             const amt = Math.min(Number(c.amount) || 0, remaining);
+             if (amt <= 0) return;
+             remaining -= amt;
+             if (!sourcesMap[c.ledger_name]) sourcesMap[c.ledger_name] = { name: c.ledger_name, amount: 0, count: 0 };
+             sourcesMap[c.ledger_name].amount += amt;
+             sourcesMap[c.ledger_name].count += 1;
+             detailedTransactions.push(buildDetail('INFLOW', c.ledger_name, amt));
+           });
+        } else {
+           // Fallback if no non-liquidity credits (rare anomaly)
+           const fallbackSource = v.party_ledger_name || 'Unknown Source';
+           if (!sourcesMap[fallbackSource]) sourcesMap[fallbackSource] = { name: fallbackSource, amount: 0, count: 0 };
+           sourcesMap[fallbackSource].amount += netLiq;
+           sourcesMap[fallbackSource].count += 1;
+           detailedTransactions.push(buildDetail('INFLOW', fallbackSource, netLiq));
+        }
+      } else {
+        // Net Outflow! Uses are the non-liquidity debits.
+        const outAmt = Math.abs(netLiq);
+        totalOutflow += outAmt;
+        timeBuckets[bucket.label].outflow += outAmt;
+
+        let remaining = outAmt;
+        if (nonLiqDebits.length > 0) {
+           nonLiqDebits.forEach(d => {
+             const amt = Math.min(Number(d.amount) || 0, remaining);
+             if (amt <= 0) return;
+             remaining -= amt;
+             if (!usesMap[d.ledger_name]) usesMap[d.ledger_name] = { name: d.ledger_name, amount: 0, count: 0 };
+             usesMap[d.ledger_name].amount += amt;
+             usesMap[d.ledger_name].count += 1;
+             detailedTransactions.push(buildDetail('OUTFLOW', d.ledger_name, amt));
+           });
+        } else {
+           const fallbackUse = v.party_ledger_name || 'Unknown Use';
+           if (!usesMap[fallbackUse]) usesMap[fallbackUse] = { name: fallbackUse, amount: 0, count: 0 };
+           usesMap[fallbackUse].amount += outAmt;
+           usesMap[fallbackUse].count += 1;
+           detailedTransactions.push(buildDetail('OUTFLOW', fallbackUse, outAmt));
+        }
+      }
+    }
+
+    const trendData = Object.values(timeBuckets)
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(t => ({
+        month: t.label,
+        inflow: t.inflow,
+        outflow: t.outflow
+      }));
+      
+    const topSources = Object.values(sourcesMap).sort((a, b) => b.amount - a.amount);
+    const topUses = Object.values(usesMap).sort((a, b) => b.amount - a.amount);
+
+    let totalBankBalance = 0;
+    let totalCashBalance = 0;
+    
+    const liquidityAccounts = (liquidityLedgers || []).map((l: any) => {
+      const bal = Number(l.closing_balance) || 0;
+      if (l.parent_group === 'Bank Accounts') totalBankBalance += bal;
+      if (l.parent_group === 'Cash-in-Hand') totalCashBalance += bal;
+      return { ...l, closing_balance: bal };
+    }).sort((a, b) => Math.abs(b.closing_balance) - Math.abs(a.closing_balance));
+
+    // Fetch ledgers for outstandings classification
+    const { data: allLedgers, error: allLedgersErr } = await supabase.from('ledgers').select('name, parent_group');
+    if (allLedgersErr) throw allLedgersErr;
+    const ledgerGroupMap = new Map((allLedgers || []).map(l => [l.name, l.parent_group]));
+
+    // Calculate 30-Day Forecast
+    const forecastDays = 30;
+    const forecastData = [];
+    let projectedBalance = totalBankBalance + totalCashBalance;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    for (let i = 0; i < forecastDays; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+      const dateStr = targetDate.toISOString().split('T')[0];
+      
+      let incoming = 0;
+      let outgoing = 0;
+
+      outstandings?.forEach(bill => {
+         if (!bill.due_date) return;
+         const billDate = new Date(bill.due_date);
+         billDate.setHours(0,0,0,0);
+         
+         // If due date is before today, we count it as incoming/outgoing TODAY (i=0) because it's overdue
+         if ((i === 0 && billDate <= targetDate) || (i > 0 && billDate.getTime() === targetDate.getTime())) {
+            const group = ledgerGroupMap.get(bill.party_ledger);
+            if (group === 'Sundry Debtors') incoming += Number(bill.pending_amount) || 0;
+            else if (group === 'Sundry Creditors') outgoing += Number(bill.pending_amount) || 0;
+         }
+      });
+
+      projectedBalance += incoming - outgoing;
+
+      forecastData.push({
+        date: targetDate.toLocaleDateString('default', { month: 'short', day: 'numeric' }),
+        fullDate: dateStr,
+        incoming,
+        outgoing,
+        balance: projectedBalance
+      });
+    }
+
+    return NextResponse.json({
+      kpis: {
+        totalInflow,
+        totalOutflow,
+        netFlow: totalInflow - totalOutflow,
+        transactionCount: detailedTransactions.length,
+        totalBankBalance,
+        totalCashBalance
+      },
+      trendData,
+      forecastData,
+      topSources,
+      topUses,
+      detailedTransactions,
+      liquidityAccounts
+    });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json({ error: 'Failed to fetch cash flow data' }, { status: 500 });
+  }
+}
