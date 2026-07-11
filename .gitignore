@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+.env.local
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Database / OS files
+.DS_Store
+Thumbs.db
+
+# Any raw data we might want to ignore
+*.xml
+*.json
