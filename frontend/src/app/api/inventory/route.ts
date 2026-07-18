@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
   const d = new Date(dateString);
@@ -32,6 +33,14 @@ function getTimeBucket(dateString: string, startDateStr: string | null, endDateS
   }
 }
 
+const getEmptyInventoryState = () => ({
+  kpis: {
+    totalProducts: 0, inwardQty: 0, inwardValue: 0, outwardQty: 0, outwardValue: 0,
+    openingValue: 0, closingValue: 0, grossValue: 0, consumption: 0, grossProfit: 0,
+    profitPerc: 0, riskItemsCount: 0
+  },
+  allProducts: [], fastMoving: [], slowMoving: [], trendData: [], detailedLedger: []
+});
 
 export async function GET(request: Request) {
   try {
@@ -39,15 +48,58 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    // Handle Active Company Filtering
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+    
+    let companyId = null;
+    const decodedName = decodeURIComponent(activeCompany);
+    const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
+    if (comp) {
+      companyId = comp.id;
+    } else {
+      const { data: bkmComp } = await supabase.from('companies').select('id').eq('name', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)').single();
+      if (bkmComp) {
+        companyId = bkmComp.id;
+      } else {
+        return NextResponse.json(getEmptyInventoryState());
+      }
+    }
+
     let query = supabase
-      .from('vouchers')
-      .select('*, voucher_inventory(*)');
+      .from('voucher_inventory')
+      .select(`
+        stock_item_name,
+        actual_qty,
+        billed_qty,
+        amount,
+        is_inward,
+        vouchers!inner(
+          id,
+          date,
+          voucher_type_name,
+          voucher_number,
+          party_ledger_name,
+          tally_guid
+        )
+      `)
+      .eq('vouchers.is_deleted', false)
+      .eq('vouchers.is_cancelled', false)
+      .eq('vouchers.is_optional', false);
 
-    // Only filter by endDate in DB, we need prior vouchers to calculate dynamic Opening Balance
-    if (endDate) query = query.lte('date', endDate);
+    if (companyId) {
+      query = query.eq('vouchers.company_id', companyId);
+    }
 
-    const { data: vouchers, error } = await query;
-    const { data: stockItems, error: stockItemsError } = await supabase.from('stock_items').select('*');
+    if (endDate) {
+      query = query.lte('vouchers.date', endDate);
+    }
+
+    const { data: inventoryLines, error } = await fetchAllData(query);
+    const { data: stockItems, error: stockItemsError } = await supabase
+      .from('stock_items')
+      .select('*')
+      .eq('company_id', companyId);
 
     if (error) throw error;
 
@@ -58,6 +110,12 @@ export async function GET(request: Request) {
         name: item.name,
         parentGroup: item.parent_group || 'Uncategorized',
         baseUnits: item.base_units || 'nos',
+        
+        // Running values (from start of Tally books begin)
+        runningQty: Math.abs(Number(item.opening_balance_qty) || 0),
+        runningVal: Math.abs(Number(item.opening_balance_value) || 0),
+
+        // Period totals
         openingQty: Math.abs(Number(item.opening_balance_qty) || 0),
         openingVal: Math.abs(Number(item.opening_balance_value) || 0),
         inQty: 0,
@@ -65,7 +123,11 @@ export async function GET(request: Request) {
         outQty: 0,
         outVal: 0,
         closingQty: 0,
-        closingVal: 0
+        closingVal: 0,
+        consumption: 0,
+        grossValue: 0,
+        grossProfit: 0,
+        profitPerc: 0
       };
     });
 
@@ -79,109 +141,124 @@ export async function GET(request: Request) {
 
     const startDateTime = startDate ? new Date(startDate).getTime() : 0;
 
-    vouchers?.forEach(v => {
-      if (!v.voucher_inventory || v.voucher_inventory.length === 0) return;
+    // Chronologically sort inventory lines so WAC calculation is accurate
+    const sortedLines = [...(inventoryLines || [])].sort((a: any, b: any) => {
+      const aDate = a.vouchers?.date ? new Date(a.vouchers.date).getTime() : 0;
+      const bDate = b.vouchers?.date ? new Date(b.vouchers.date).getTime() : 0;
+      return aDate - bDate;
+    });
+
+    sortedLines.forEach((inv: any) => {
+      const v = inv.vouchers;
+      if (!v) return;
 
       const vType = (v.voucher_type_name || '').toLowerCase();
       // Skip order vouchers (Sales Order, Purchase Order, Job Work Order) as they don't affect physical stock
       if (vType.includes('order')) return;
-
-      // Use is_inward flag from each inventory line instead of guessing from voucher type name
-      const hasInventory = v.voucher_inventory.some((inv: any) => inv.stock_item_name);
 
       const vTime = new Date(v.date).getTime();
       const isBeforeStart = startDateTime > 0 && vTime < startDateTime;
 
       if (!isBeforeStart) {
         const bucket = getTimeBucket(v.date, startDate, endDate);
-        if (!timeBuckets[bucket.label]) timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, inQty: 0, outQty: 0 };
+        if (!timeBuckets[bucket.label]) {
+          timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, inQty: 0, outQty: 0 };
+        }
       }
 
-      v.voucher_inventory.forEach((inv: any) => {
-        const pName = inv.stock_item_name || "Unknown Product";
-        const qty = Number(inv.actual_qty || inv.billed_qty) || 0;
-        const val = Number(inv.amount) || 0;
-        const rate = Number(inv.rate) || (qty > 0 ? val / qty : 0);
+      const pName = inv.stock_item_name || "Unknown Product";
+      const qty = Number(inv.actual_qty || inv.billed_qty) || 0;
+      const val = Number(inv.amount) || 0;
 
-        if (!productStats[pName]) {
-          productStats[pName] = {
-            name: pName,
-            parentGroup: 'Uncategorized',
-            baseUnits: 'nos',
-            openingQty: 0,
-            openingVal: 0,
-            inQty: 0,
-            inVal: 0,
-            outQty: 0,
-            outVal: 0,
-            closingQty: 0,
-            closingVal: 0
-          };
+      if (!productStats[pName]) {
+        productStats[pName] = {
+          name: pName,
+          parentGroup: 'Uncategorized',
+          baseUnits: 'nos',
+          runningQty: 0,
+          runningVal: 0,
+          openingQty: 0,
+          openingVal: 0,
+          inQty: 0,
+          inVal: 0,
+          outQty: 0,
+          outVal: 0,
+          closingQty: 0,
+          closingVal: 0,
+          consumption: 0,
+          grossValue: 0,
+          grossProfit: 0,
+          profitPerc: 0
+        };
+      }
+
+      const p = productStats[pName];
+
+      if (inv.is_inward) {
+        // Inward (Purchase/Receipt)
+        p.runningQty += qty;
+        p.runningVal += val;
+
+        if (!isBeforeStart) {
+          totalInwardValue += val;
+          totalInwardQty += qty;
+          p.inQty += qty;
+          p.inVal += val;
+          const bucket = getTimeBucket(v.date, startDate, endDate);
+          if (timeBuckets[bucket.label]) timeBuckets[bucket.label].inQty += qty;
         }
+      } else {
+        // Outward (Sale/Delivery)
+        // Cost of goods sold (COGS) is based on running Weighted Average Cost * qty
+        const costPrice = p.runningQty > 0 ? (p.runningVal / p.runningQty) * qty : 0;
+        p.runningQty -= qty;
+        p.runningVal -= costPrice;
 
-        if (isBeforeStart) {
-          // Adjust Opening Balance dynamically
-          if (inv.is_inward) {
-            productStats[pName].openingQty += qty;
-            productStats[pName].openingVal += val;
-          } else {
-            productStats[pName].openingQty -= qty;
-            productStats[pName].openingVal -= val;
-          }
-        } else {
-          // Current Period Inwards/Outwards
-          if (inv.is_inward) {
-            totalInwardValue += val;
-            totalInwardQty += qty;
-            productStats[pName].inQty += qty;
-            productStats[pName].inVal += val;
-            const bucket = getTimeBucket(v.date, startDate, endDate);
-            if (timeBuckets[bucket.label]) timeBuckets[bucket.label].inQty += qty;
-          } else {
-            totalOutwardValue += val;
-            totalOutwardQty += qty;
-            productStats[pName].outQty += qty;
-            productStats[pName].outVal += val;
-            const bucket = getTimeBucket(v.date, startDate, endDate);
-            if (timeBuckets[bucket.label]) timeBuckets[bucket.label].outQty += qty;
-          }
-
-          detailedLedger.push({
-            id: v.voucher_number || v.tally_guid.substring(0,8),
-            date: v.date,
-            type: inv.is_inward ? 'INWARD' : 'OUTWARD',
-            voucherType: v.voucher_type_name,
-            product: pName,
-            party: v.party_ledger_name || 'Cash',
-            qty: qty,
-            rate: rate,
-            amount: val
-          });
+        if (!isBeforeStart) {
+          totalOutwardValue += val;
+          totalOutwardQty += qty;
+          p.outQty += qty;
+          p.outVal += val; // sales revenue
+          p.consumption += costPrice; // cost value
+          const bucket = getTimeBucket(v.date, startDate, endDate);
+          if (timeBuckets[bucket.label]) timeBuckets[bucket.label].outQty += qty;
         }
-      });
+      }
+
+      // If we are still before the start date, the "opening" of the period is rolled forward
+      if (isBeforeStart) {
+        p.openingQty = p.runningQty;
+        p.openingVal = p.runningVal;
+      }
+
+      if (!isBeforeStart) {
+        detailedLedger.push({
+          id: v.voucher_number || v.tally_guid.substring(0, 8),
+          date: v.date,
+          type: inv.is_inward ? 'INWARD' : 'OUTWARD',
+          voucherType: v.voucher_type_name,
+          product: pName,
+          party: v.party_ledger_name || 'Cash',
+          qty: qty,
+          rate: qty > 0 ? val / qty : 0,
+          amount: val
+        });
+      }
     });
 
     const allProducts = Object.values(productStats).map((p: any) => {
-      // Calculate Closing Balance exactly as Tally does
-      p.closingQty = p.openingQty + p.inQty - p.outQty;
-      
+      // Calculate Closing Balance
+      p.closingQty = p.runningQty;
+      p.closingVal = p.runningVal;
+
       // Calculate rates
       p.openingRate = p.openingQty !== 0 ? Math.abs(p.openingVal / p.openingQty) : 0;
       p.inRate = p.inQty !== 0 ? Math.abs(p.inVal / p.inQty) : 0;
       p.outRate = p.outQty !== 0 ? Math.abs(p.outVal / p.outQty) : 0;
-      
-      p.closingVal = p.openingVal + p.inVal - p.outVal;
       p.closingRate = p.closingQty !== 0 ? Math.abs(p.closingVal / p.closingQty) : 0;
-
+      
       // Gross Value = outward value (selling price from vouchers)
       p.grossValue = p.outVal;
-      
-      // Consumption = weighted average cost * outward qty
-      // Weighted avg cost = (opening_value + inward_value) / (opening_qty + inward_qty)
-      const totalAvailableQty = p.openingQty + p.inQty;
-      const totalAvailableVal = p.openingVal + p.inVal;
-      const weightedAvgCost = totalAvailableQty > 0 ? totalAvailableVal / totalAvailableQty : 0;
-      p.consumption = weightedAvgCost * p.outQty;
       
       // Gross Profit = Gross Value - Consumption
       p.grossProfit = p.grossValue - p.consumption;
@@ -217,6 +294,16 @@ export async function GET(request: Request) {
     let totalGrossProfit = totalGrossValue - totalConsumption;
     let totalProfitPerc = totalGrossValue > 0 ? (totalGrossProfit / totalGrossValue) * 100 : 0;
 
+    let minDate: string | null = null;
+    let maxDate: string | null = null;
+    inventoryLines?.forEach((inv: any) => {
+      const v = inv.vouchers;
+      if (v && v.date) {
+        if (!minDate || v.date < minDate) minDate = v.date;
+        if (!maxDate || v.date > maxDate) maxDate = v.date;
+      }
+    });
+
     return NextResponse.json({
       kpis: {
         totalProducts: allProducts.length,
@@ -236,7 +323,8 @@ export async function GET(request: Request) {
       fastMoving,
       slowMoving,
       trendData,
-      detailedLedger
+      detailedLedger,
+      dateBounds: { minDate, maxDate }
     });
 
   } catch (error: any) {

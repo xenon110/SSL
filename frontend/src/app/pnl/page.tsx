@@ -10,7 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function PnLDashboard() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const currentMonth = d.getMonth();
+    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -33,6 +41,8 @@ export default function PnLDashboard() {
         const res = await fetch(url);
         const json = await res.json();
         setData(json);
+
+        
       } catch (error) {
         console.error("Failed to fetch PnL data:", error);
       } finally {
@@ -63,8 +73,7 @@ export default function PnLDashboard() {
     
     let list = [];
     if (selectedLedger.isGroup) {
-      const groupLedgers = allLedgersCombined.filter(l => l.rootGroup === selectedLedger.name).map(l => l.name);
-      list = data.detailedTransactions.filter((tx: any) => groupLedgers.includes(tx.ledger));
+      list = data.detailedTransactions.filter((tx: any) => tx.rootGroup === selectedLedger.name);
     } else {
       list = data.detailedTransactions.filter((tx: any) => tx.ledger === selectedLedger.name);
     }
@@ -85,27 +94,27 @@ export default function PnLDashboard() {
   const deepDiveTrend = useMemo(() => {
     if (!selectedLedger || !data?.detailedTransactions) return [];
     
-    const monthly: Record<string, { month: string, target: number, compare: number }> = {};
-    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthly: Record<string, { month: string, target: number, compare: number, sortKey: number }> = {};
     
-    const targetLedgers = selectedLedger.isGroup 
-      ? allLedgersCombined.filter(l => l.rootGroup === selectedLedger.name).map(l => l.name)
-      : [selectedLedger.name];
-
     data.detailedTransactions.forEach((tx: any) => {
-      const isTarget = targetLedgers.includes(tx.ledger);
+      const isTarget = selectedLedger.isGroup 
+        ? tx.rootGroup === selectedLedger.name 
+        : tx.ledger === selectedLedger.name;
       const isCompare = tx.ledger === compareLedger;
       
       if (!isTarget && !isCompare) return;
 
-      const m = new Date(tx.date).toLocaleString('default', { month: 'short' });
-      if (!monthly[m]) monthly[m] = { month: m, target: 0, compare: 0 };
+      const d = new Date(tx.date);
+      const m = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear().toString().substring(2);
+      const sortKey = d.getFullYear() * 100 + d.getMonth();
+      
+      if (!monthly[m]) monthly[m] = { month: m, target: 0, compare: 0, sortKey };
 
       if (isTarget) monthly[m].target += tx.amount;
       if (isCompare) monthly[m].compare += tx.amount;
     });
 
-    return Object.values(monthly).sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+    return Object.values(monthly).sort((a, b) => a.sortKey - b.sortKey);
   }, [selectedLedger, compareLedger, data]);
 
   const kpis = data?.kpis;
@@ -136,6 +145,24 @@ export default function PnLDashboard() {
       .sort((a,b)=>b.value - a.value);
   }, [data]);
 
+  const groupLedgers = useMemo(() => {
+    if (!selectedLedger || !selectedLedger.isGroup || !filteredTransactions.length) return [];
+    const ledgers = new Map();
+    filteredTransactions.forEach((tx: any) => {
+      ledgers.set(tx.ledger, (ledgers.get(tx.ledger) || 0) + tx.amount);
+    });
+    return Array.from(ledgers.entries())
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a,b) => b.amount - a.amount);
+  }, [filteredTransactions, selectedLedger]);
+
+  const getRankClass = (i: number, baseClass: string) => {
+    if (i === 0) return 'bg-gradient-to-br from-amber-300 to-amber-500 text-white shadow-sm ring-2 ring-amber-200 ring-offset-1';
+    if (i === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-sm ring-2 ring-slate-200 ring-offset-1';
+    if (i === 2) return 'bg-gradient-to-br from-orange-300 to-orange-400 text-white shadow-sm ring-2 ring-orange-200 ring-offset-1';
+    return baseClass;
+  };
+
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32">
@@ -150,6 +177,7 @@ export default function PnLDashboard() {
         </div>
         <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded-xl shadow-sm border">
           <DateRangePicker 
+            value={dateRange}
             onDateChange={setDateRange}
           />
         </div>
@@ -168,16 +196,16 @@ export default function PnLDashboard() {
               <CardContent className="p-6 relative overflow-hidden">
                 <div className="absolute right-0 top-0 opacity-10 translate-x-4 -translate-y-4"><DollarSign className="w-32 h-32" /></div>
                 <p className="text-indigo-100 text-sm font-semibold uppercase tracking-wider mb-2">Total Revenue</p>
-                <h3 className="text-4xl font-black truncate">{formatCurrency(kpis?.totalIncome || 0)}</h3>
-                <p className="text-indigo-200 mt-2 text-sm">{formatCurrency(kpis?.totalDirectIncome || 0)} Direct</p>
+                <h3 className="text-4xl font-black truncate">{formatCompact(kpis?.totalIncome || 0)}</h3>
+                <p className="text-indigo-200 mt-2 text-sm">{formatCompact(kpis?.totalDirectIncome || 0)} Direct</p>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-lg bg-white dark:bg-slate-900 hover:shadow-xl transition-all">
               <CardContent className="p-6">
                 <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Expenses</p>
-                <h3 className="text-3xl font-black text-rose-600 truncate">{formatCurrency(kpis?.totalExpense || 0)}</h3>
-                <p className="text-slate-500 mt-2 text-sm">{formatCurrency(kpis?.totalIndirectExpense || 0)} Indirect</p>
+                <h3 className="text-3xl font-black text-rose-600 truncate">{formatCompact(kpis?.totalExpense || 0)}</h3>
+                <p className="text-slate-500 mt-2 text-sm">{formatCompact(kpis?.totalIndirectExpense || 0)} Indirect</p>
               </CardContent>
             </Card>
 
@@ -185,7 +213,7 @@ export default function PnLDashboard() {
               <CardContent className="p-6">
                 <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Gross Profit</p>
                 <h3 className={`text-3xl font-black truncate ${kpis?.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {formatCurrency(kpis?.grossProfit || 0)}
+                  {formatCompact(kpis?.grossProfit || 0)}
                 </h3>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant="secondary" className={kpis?.gpMargin >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}>
@@ -200,7 +228,7 @@ export default function PnLDashboard() {
               <CardContent className="p-6 relative z-10">
                 <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Net Profit</p>
                 <h3 className={`text-3xl font-black truncate ${kpis?.netProfit >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-rose-600'}`}>
-                  {formatCurrency(kpis?.netProfit || 0)}
+                  {formatCompact(kpis?.netProfit || 0)}
                 </h3>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant="secondary" className={kpis?.npMargin >= 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-rose-100 text-rose-700'}>
@@ -230,13 +258,13 @@ export default function PnLDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="label" stroke="#94a3b8" tickLine={false} axisLine={false} dy={10} />
+                    <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} dy={10} />
                     <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} tickFormatter={(v) => formatCompact(v)} />
                     <RechartsTooltip cursor={{ fill: '#f8fafc' }} formatter={(value: any) => formatCurrency(value)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                    <Area type="monotone" dataKey="income" name="Total Income" fill="url(#incomeFill)" stroke="#10b981" strokeWidth={3} />
-                    <Line type="monotone" dataKey="expense" name="Total Expense" stroke="#f43f5e" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="np" name="Net Profit" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                    <Area type="monotone" dataKey="totalIncome" name="Total Income" fill="url(#incomeFill)" stroke="#10b981" strokeWidth={3} />
+                    <Line type="monotone" dataKey="totalExpense" name="Total Expense" stroke="#f43f5e" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="netProfit" name="Net Profit" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -356,7 +384,7 @@ export default function PnLDashboard() {
                   {data?.insights?.topProducts?.map((p: any, i: number) => (
                     <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">{i+1}</div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${getRankClass(i, 'bg-indigo-100 text-indigo-700')}`}>{i+1}</div>
                         <p className="font-medium text-slate-700 truncate max-w-[120px]">{p.name}</p>
                       </div>
                       <p className="font-bold text-slate-800">{formatCompact(p.value)}</p>
@@ -378,7 +406,7 @@ export default function PnLDashboard() {
                   {data?.insights?.stateWiseRevenue?.map((s: any, i: number) => (
                     <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">{i+1}</div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${getRankClass(i, 'bg-emerald-100 text-emerald-700')}`}>{i+1}</div>
                         <p className="font-medium text-slate-700 truncate max-w-[120px]">{s.name}</p>
                       </div>
                       <p className="font-bold text-slate-800">{formatCompact(s.value)}</p>
@@ -400,7 +428,7 @@ export default function PnLDashboard() {
                   {data?.insights?.topCustomers?.map((c: any, i: number) => (
                     <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">{i+1}</div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${getRankClass(i, 'bg-blue-100 text-blue-700')}`}>{i+1}</div>
                         <p className="font-medium text-slate-700 truncate max-w-[120px]">{c.name}</p>
                       </div>
                       <p className="font-bold text-slate-800">{formatCompact(c.value)}</p>
@@ -422,7 +450,7 @@ export default function PnLDashboard() {
                   {data?.insights?.topVendors?.map((v: any, i: number) => (
                     <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xs">{i+1}</div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${getRankClass(i, 'bg-rose-100 text-rose-700')}`}>{i+1}</div>
                         <p className="font-medium text-slate-700 truncate max-w-[120px]">{v.name}</p>
                       </div>
                       <p className="font-bold text-slate-800">{formatCompact(v.value)}</p>
@@ -445,13 +473,24 @@ export default function PnLDashboard() {
             
             {/* Header */}
             <div className="flex items-center justify-between px-8 py-6 border-b bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
-              <div>
-                <Badge variant="outline" className={`mb-2 ${selectedLedger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-200'}`}>
-                  {selectedLedger.type === 'INCOME' ? 'Income Deep Dive' : 'Expense Deep Dive'}
-                </Badge>
-                <h3 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white" title={selectedLedger.name}>
-                  {selectedLedger.name.length > 50 ? selectedLedger.name.substring(0, 50) + '...' : selectedLedger.name}
-                </h3>
+              <div className="flex items-center gap-4">
+                {selectedLedger.parentContext && (
+                  <button 
+                    onClick={() => setSelectedLedger(selectedLedger.parentContext)}
+                    className="p-2 rounded-full bg-white shadow-sm border hover:bg-slate-100 transition-colors text-slate-500"
+                    title="Go back to group"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                )}
+                <div>
+                  <Badge variant="outline" className={`mb-2 ${selectedLedger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-200'}`}>
+                    {selectedLedger.type === 'INCOME' ? 'Income Deep Dive' : 'Expense Deep Dive'}
+                  </Badge>
+                  <h3 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white" title={selectedLedger.name}>
+                    {selectedLedger.name.length > 50 ? selectedLedger.name.substring(0, 50) + '...' : selectedLedger.name}
+                  </h3>
+                </div>
               </div>
               <button 
                 onClick={() => setSelectedLedger(null)}
@@ -533,6 +572,39 @@ export default function PnLDashboard() {
                   </ResponsiveContainer>
                 </div>
               </Card>
+
+              {/* Group Ledgers Breakdown (Only for Groups) */}
+              {selectedLedger.isGroup && groupLedgers.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2 uppercase tracking-wide">
+                    <PieChartIcon className="h-4 w-4 text-indigo-500" />
+                    Ledgers in this Group
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupLedgers.map((l, i) => (
+                      <Card 
+                        key={i} 
+                        className="border hover:border-indigo-300 hover:shadow-md cursor-pointer transition-all bg-white"
+                        onClick={() => setSelectedLedger({ 
+                          name: l.name, 
+                          amount: l.amount, 
+                          type: selectedLedger.type, 
+                          isGroup: false, 
+                          rootGroup: selectedLedger.name,
+                          parentContext: selectedLedger 
+                        })}
+                      >
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <p className="font-semibold text-sm text-slate-700 truncate pr-4">{l.name}</p>
+                          <p className={`font-black text-sm tabular-nums ${selectedLedger.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {formatCurrency(l.amount)}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Transaction Ledger Table */}
               <div className="mt-8">

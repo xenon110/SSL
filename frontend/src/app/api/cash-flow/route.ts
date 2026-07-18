@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
   const d = new Date(dateString);
@@ -33,31 +34,63 @@ function getTimeBucket(dateString: string, startDateStr: string | null, endDateS
 }
 
 
+const getEmptyCashFlowState = () => ({
+  kpis: { totalInflow: 0, totalOutflow: 0, netFlow: 0, transactionCount: 0, totalBankBalance: 0, totalCashBalance: 0 },
+  trendData: [], forecastData: [], topSources: [], topUses: [], detailedTransactions: [], liquidityAccounts: []
+});
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+    
+    let companyIds: string[] = [];
+    let decodedName = decodeURIComponent(activeCompany);
+    
+    // Extract base name to match split companies (e.g., "Company - (from 1-Apr-24)")
+    const baseNameMatch = decodedName.match(/^(.*?)\s*-\s*\(from/);
+    const baseName = baseNameMatch ? baseNameMatch[1].trim() : decodedName;
+
+    const { data: relatedComps } = await supabase.from('companies').select('id').ilike('name', `${baseName}%`);
+    if (relatedComps && relatedComps.length > 0) {
+      companyIds = relatedComps.map(c => c.id);
+    } else {
+      const { data: fallback } = await supabase.from('companies').select('id').ilike('name', 'SMRIDHI SPONGE LIMITED%');
+      if (fallback && fallback.length > 0) {
+        companyIds = fallback.map(c => c.id);
+      } else {
+        return NextResponse.json(getEmptyCashFlowState());
+      }
+    }
+
     // Fetch all ledgers to identify liquidity accounts
     const { data: liquidityLedgers, error: ledgerError } = await supabase
       .from('ledgers')
       .select('name, parent_group, closing_balance')
-      .in('parent_group', ['Bank Accounts', 'Cash-in-Hand']);
+      .in('company_id', companyIds)
+      .in('parent_group', ['Bank Accounts', 'Cash-in-Hand', 'Bank OD A/c', 'Bank OCC A/c']);
     
     if (ledgerError) throw ledgerError;
 
     const liquiditySet = new Set((liquidityLedgers || []).map(l => l.name));
 
-    // Fetch all vouchers to scan for cash flow
+    // Fetch all vouchers to scan for cash flow (without nested joins)
     let query = supabase
       .from('vouchers')
-      .select('*, voucher_ledgers(*), voucher_inventory(*)');
+      .select('id, date, voucher_number, tally_guid, party_ledger_name, voucher_type_name, amount, is_cancelled, is_deleted')
+      .in('company_id', companyIds)
+      .eq('is_deleted', false)
+      .eq('is_cancelled', false)
+      .eq('is_optional', false);
 
     if (startDate) query = query.gte('date', startDate);
     if (endDate) query = query.lte('date', endDate);
 
-    const { data: vouchers, error } = await query;
+    const { data: vouchers, error } = await fetchAllData(query);
     if (error) throw error;
     
     const isAdjusted = searchParams.get('adjusted') === 'true';
@@ -94,11 +127,17 @@ export async function GET(request: Request) {
     }
 
     // Fetch outstanding bills for forecasting
-    const { data: outstandings, error: outErr } = await supabase
+    let outQuery = supabase
       .from('outstanding_bills')
       .select('pending_amount, due_date, party_ledger, company_name')
+      .eq('company_name', decodedName)
       .gt('pending_amount', 0);
       
+    if (endDate) {
+      outQuery = outQuery.lte('bill_date', endDate);
+    }
+       
+    const { data: outstandings, error: outErr } = await outQuery;
     if (outErr) throw outErr;
 
     let totalInflow = 0;
@@ -109,7 +148,57 @@ export async function GET(request: Request) {
     const usesMap: Record<string, { name: string, amount: number, count: number }> = {};
     const detailedTransactions: any[] = [];
 
+    if (activeVouchers.length === 0) {
+      return NextResponse.json(getEmptyCashFlowState());
+    }
+
+    // Find which vouchers actually involve cash flow
+    const { data: liqLedgers, error: liqErr } = await fetchAllData(
+        supabase.from('voucher_ledgers')
+                .select('voucher_id')
+                .in('ledger_name', Array.from(liquiditySet))
+    );
+    if (liqErr) throw liqErr;
+
+    const liqVoucherIds = new Set((liqLedgers || []).map(l => l.voucher_id));
+    
+    // Fetch related ledgers and inventory independently in chunks to avoid URI Too Large errors
+    const activeVoucherIds = activeVouchers.map(v => v.id).filter(id => liqVoucherIds.has(id));
+    const chunkArray = (arr: any[], size: number) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+    const idChunks = chunkArray(activeVoucherIds, 150);
+
+    const allLedgers: any[] = [];
+    const allInv: any[] = [];
+
+    for (const chunk of idChunks) {
+        const { data: lData, error: lErr } = await fetchAllData(supabase.from('voucher_ledgers').select('voucher_id, ledger_name, amount, is_debit').in('voucher_id', chunk));
+        if (lErr) throw lErr;
+        allLedgers.push(...(lData || []));
+
+        const { data: iData, error: iErr } = await fetchAllData(supabase.from('voucher_inventory').select('voucher_id, stock_item_name, billed_qty, rate, amount').in('voucher_id', chunk));
+        if (iErr) throw iErr;
+        allInv.push(...(iData || []));
+    }
+
+    // Group ledgers and inventory by voucher_id
+    const ledgerMap = new Map();
+    const invMap = new Map();
+
+    (allLedgers || []).forEach(l => {
+       if (!ledgerMap.has(l.voucher_id)) ledgerMap.set(l.voucher_id, []);
+       ledgerMap.get(l.voucher_id).push(l);
+    });
+
+    (allInv || []).forEach(i => {
+       if (!invMap.has(i.voucher_id)) invMap.set(i.voucher_id, []);
+       invMap.get(i.voucher_id).push(i);
+    });
+
     for (const v of activeVouchers) {
+      // Attach mapped children
+      v.voucher_ledgers = ledgerMap.get(v.id) || [];
+      v.voucher_inventory = invMap.get(v.id) || [];
+
       // Analyze liquidity movement in this voucher
       let liqIn = 0; // Debits to Cash/Bank
       let liqOut = 0; // Credits to Cash/Bank
@@ -211,9 +300,10 @@ export async function GET(request: Request) {
     const trendData = Object.values(timeBuckets)
       .sort((a, b) => a.sortKey - b.sortKey)
       .map(t => ({
-        month: t.label,
+        name: t.label,
         inflow: t.inflow,
-        outflow: t.outflow
+        outflow: t.outflow,
+        netFlow: t.inflow - t.outflow
       }));
       
     const topSources = Object.values(sourcesMap).sort((a, b) => b.amount - a.amount);
@@ -224,15 +314,15 @@ export async function GET(request: Request) {
     
     const liquidityAccounts = (liquidityLedgers || []).map((l: any) => {
       const bal = Number(l.closing_balance) || 0;
-      if (l.parent_group === 'Bank Accounts') totalBankBalance += bal;
+      if (l.parent_group === 'Bank Accounts' || l.parent_group === 'Bank OD A/c' || l.parent_group === 'Bank OCC A/c') totalBankBalance += bal;
       if (l.parent_group === 'Cash-in-Hand') totalCashBalance += bal;
       return { ...l, closing_balance: bal };
     }).sort((a, b) => Math.abs(b.closing_balance) - Math.abs(a.closing_balance));
 
     // Fetch ledgers for outstandings classification
-    const { data: allLedgers, error: allLedgersErr } = await supabase.from('ledgers').select('name, parent_group');
+    const { data: allLedgerDefs, error: allLedgersErr } = await fetchAllData(supabase.from('ledgers').select('name, parent_group').in('company_id', companyIds));
     if (allLedgersErr) throw allLedgersErr;
-    const ledgerGroupMap = new Map((allLedgers || []).map(l => [l.name, l.parent_group]));
+    const ledgerGroupMap = new Map((allLedgerDefs || []).map(l => [l.name, l.parent_group]));
 
     // Calculate 30-Day Forecast
     const forecastDays = 30;
@@ -273,6 +363,15 @@ export async function GET(request: Request) {
       });
     }
 
+    let minDate: string | null = null;
+    let maxDate: string | null = null;
+    vouchers?.forEach(v => {
+      if (v.date) {
+        if (!minDate || v.date < minDate) minDate = v.date;
+        if (!maxDate || v.date > maxDate) maxDate = v.date;
+      }
+    });
+
     return NextResponse.json({
       kpis: {
         totalInflow,
@@ -287,11 +386,12 @@ export async function GET(request: Request) {
       topSources,
       topUses,
       detailedTransactions,
-      liquidityAccounts
+      liquidityAccounts,
+      dateBounds: { minDate, maxDate }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('API Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch cash flow data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed: ' + (error?.message || String(error)) }, { status: 500 });
   }
 }

@@ -36,6 +36,7 @@ export default function LoginPage() {
       if (data.session) {
         // Set the auth token cookie so our middleware lets us through
         document.cookie = `auth-token=${data.session.access_token}; path=/; max-age=86400`;
+        document.cookie = `active-company=SMRIDHI%20SPONGE%20LIMITED%20-%20%28from%201-Apr-24%29%20-%20%28from%201-Apr-25%29; path=/; max-age=86400`;
         router.push("/dashboard");
       }
     } catch (err: any) {
@@ -85,7 +86,7 @@ export default function LoginPage() {
           
           <div className="relative z-10">
             <h2 className="text-4xl font-black tracking-tighter mb-4 flex items-center gap-2">
-              BKM<span className="text-indigo-200">Prime</span>
+              Samridhi<span className="text-indigo-200">Prime</span>
             </h2>
             <p className="text-xl font-medium text-indigo-100 mb-12">
               Enterprise Financial Intelligence
@@ -130,7 +131,7 @@ export default function LoginPage() {
           <div className="max-w-sm w-full mx-auto space-y-8">
             <div className="text-center lg:text-left">
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Welcome back</h1>
-              <p className="text-slate-500 mt-2">Sign in to your BKMPrime account to continue.</p>
+              <p className="text-slate-500 mt-2">Sign in to your SamridhiPrime account to continue.</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">

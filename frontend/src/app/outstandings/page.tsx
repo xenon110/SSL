@@ -7,12 +7,24 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
   ArrowDownRight, ArrowUpRight, Clock, AlertTriangle, 
-  X, Receipt, AlertCircle, RefreshCcw, HandCoins, Search
+  X, Receipt, AlertCircle, RefreshCcw, HandCoins, Search, Sparkles,
+  Activity, ShieldAlert, Filter, ChevronLeft, ChevronRight, Download, Calendar
 } from "lucide-react";
 import { format } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 
 export default function OutstandingsDashboard() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const currentMonth = d.getMonth();
+    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedParty, setSelectedParty] = useState<any>(null);
@@ -25,7 +37,13 @@ export default function OutstandingsDashboard() {
     async function fetchData() {
       try {
         setIsLoading(true);
-        const res = await fetch('/api/outstandings');
+        let url = '/api/outstandings';
+        const params = new URLSearchParams();
+        if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+        if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+        if (params.toString()) url += '?' + params.toString();
+
+        const res = await fetch(url);
         const json = await res.json();
         setData(json);
       } catch (error) {
@@ -35,10 +53,16 @@ export default function OutstandingsDashboard() {
       }
     }
     fetchData();
-  }, []);
+  }, [dateRange]);
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const predictionUrl = React.useMemo(() => {
+    let url = '/outstandings/prediction';
+    const params = new URLSearchParams();
+    if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+    if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+    if (params.toString()) url += '?' + params.toString();
+    return url;
+  }, [dateRange]);
 
   if (isLoading) {
     return <div className="p-8 flex items-center justify-center min-h-screen text-slate-500"><RefreshCcw className="animate-spin mr-2" /> Loading Outstandings...</div>;
@@ -191,6 +215,9 @@ export default function OutstandingsDashboard() {
     );
   };
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+
   return (
     <div className="p-8 space-y-8 bg-slate-50 min-h-screen">
       {/* Header */}
@@ -205,18 +232,32 @@ export default function OutstandingsDashboard() {
             {kpis?.asOnDate && <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">As on {format(new Date(kpis.asOnDate), 'dd MMM yyyy')}</span>}
           </p>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input 
-            placeholder="Search party by name..." 
-            className="pl-9 bg-white border-slate-200 shadow-sm rounded-lg h-10" 
-            value={searchTerm} 
-            onChange={e => {
-              setSearchTerm(e.target.value);
-              setRecPage(1);
-              setPayPage(1);
-            }} 
-          />
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          <a
+            href={predictionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-lg shadow-md hover:scale-102 active:scale-98 transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4 text-white animate-pulse" />
+            AI Future Prediction
+          </a>
+          <div className="bg-white/50 dark:bg-slate-900/50 p-1 rounded-lg border shadow-sm backdrop-blur-sm">
+            <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+          </div>
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input 
+              placeholder="Search party by name..." 
+              className="pl-9 bg-white border-slate-200 shadow-sm rounded-lg h-10" 
+              value={searchTerm} 
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setRecPage(1);
+                setPayPage(1);
+              }} 
+            />
+          </div>
         </div>
       </div>
 

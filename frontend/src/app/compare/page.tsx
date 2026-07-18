@@ -23,7 +23,7 @@ export default function CompareDashboard() {
   const [bStart, setBStart] = useState(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
   const [bEnd, setBEnd] = useState(format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
   const [normalize, setNormalize] = useState(false);
-  const [company, setCompany] = useState('BKM INDUSTRIES LIMITED');
+  const [company, setCompany] = useState('SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)');
 
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);

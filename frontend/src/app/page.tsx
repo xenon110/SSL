@@ -29,7 +29,7 @@ export default function CorporateWebsite() {
           <div className="flex items-center gap-2">
             <Factory className={`h-8 w-8 ${scrolled ? 'text-blue-900' : 'text-white'}`} />
             <span className={`text-2xl font-black tracking-tight ${scrolled ? 'text-blue-900' : 'text-white'}`}>
-              BKM <span className="font-light">Industries</span>
+              Samridhi <span className="font-light">Sponge</span>
             </span>
           </div>
         </div>

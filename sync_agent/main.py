@@ -1,80 +1,584 @@
+"""
+Enterprise-Grade Tally Background Sync Agent.
+- 30-second sync interval
+- Incremental sync using ALTERID (sync_checkpoints)
+- Batch processing (1000 records per insert)
+- Pre-insert validation (debit=credit, duplicate GUID)
+- Retry with exponential backoff (5s, 15s, 60s)
+- XML archiving to archive/xml/
+- Post-sync reconciliation
+- Comprehensive sync logging
+"""
+import sys
+import os
 import time
+import re
+import json
+import uuid
+import gzip
+import datetime
+import traceback
 import requests
+from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from tally_client import TallyClient
-import os
-from dotenv import load_dotenv
+from supabase import create_client
 
-load_dotenv()
+sys.path.insert(0, os.path.dirname(__file__))
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
-BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1/sync")
-COMPANY_ID = os.getenv("COMPANY_ID", "default-company-uuid")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+TALLY_URL = os.getenv("TALLY_URL", "http://localhost:9000")
+SYNC_INTERVAL = int(os.getenv("SYNC_INTERVAL", "30"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
+RETRY_BACKOFF = [5, 15, 60]
 
-tally = TallyClient(url="http://localhost:9000", company_name="Demo Company")
+ARCHIVE_DIR = os.path.join(os.path.dirname(__file__), '..', 'archive', 'xml')
+os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
-def get_last_alter_id(entity_type):
-    # In a real app, query the backend for the max alter_id for this entity
-    # For now, simulate tracking it in memory
-    return getattr(get_last_alter_id, f"_{entity_type}", 0)
+def log(msg, level="INFO"):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [{level}] {msg}", flush=True)
 
-def set_last_alter_id(entity_type, alter_id):
-    setattr(get_last_alter_id, f"_{entity_type}", alter_id)
+_sync_running = False
+
+def parse_tally_date(date_str):
+    if not date_str:
+        return None
+    date_str = date_str.strip()
+    if re.match(r'^\d{8}$', date_str):
+        return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        return date_str
+    for fmt in ('%d-%b-%y', '%d-%b-%Y', '%d-%B-%y', '%d-%B-%Y', '%Y-%b-%d', '%Y-%B-%d'):
+        try:
+            dt = datetime.datetime.strptime(date_str, fmt)
+            return dt.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    return date_str
+
+def get_open_companies():
+    """Queries Tally to get a list of all currently open companies."""
+    xml_request = """<ENVELOPE>
+      <HEADER>
+        <VERSION>1</VERSION>
+        <TALLYREQUEST>Export</TALLYREQUEST>
+        <TYPE>Collection</TYPE>
+        <ID>AllCompanies</ID>
+      </HEADER>
+      <BODY>
+        <DESC>
+          <STATICVARIABLES>
+            <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+          </STATICVARIABLES>
+          <TDL>
+            <TDLMESSAGE>
+              <COLLECTION NAME="AllCompanies" ISINITIALIZE="Yes">
+                <TYPE>Company</TYPE>
+                <FETCH>Name</FETCH>
+              </COLLECTION>
+            </TDLMESSAGE>
+          </TDL>
+        </DESC>
+      </BODY>
+    </ENVELOPE>"""
+    for attempt in range(3):
+        try:
+            res = requests.post(TALLY_URL, data=xml_request.encode('utf-8'),
+                                headers={'Content-Type': 'text/xml'}, timeout=15)
+            if res.status_code == 200:
+                names = re.findall(r'<NAME[^>]*>(.*?)</NAME>', res.text)
+                return list(set([n.replace('&amp;', '&').strip() for n in names if n.strip()]))
+        except Exception as e:
+            wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
+            log(f"Tally connection attempt {attempt+1} failed: {e}. Retrying in {wait}s...", "WARN")
+            time.sleep(wait)
+    return []
+
+def archive_xml(xml_data: str, company_name: str, sync_id: str, data_type: str) -> str:
+    """Save XML to archive directory. Returns filename."""
+    ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+    safe_company = re.sub(r'[^a-zA-Z0-9_-]', '_', company_name)[:40]
+    filename = f"tally_{safe_company}_{ts}_{sync_id}_{data_type}.xml"
+    filepath = os.path.join(ARCHIVE_DIR, filename)
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(xml_data)
+        log(f"  Archived {data_type} XML: {filename} ({len(xml_data)} bytes)")
+        return filename
+    except Exception as e:
+        log(f"  Failed to archive XML: {e}", "WARN")
+        return filename
+
+def validate_vouchers(vouchers: list) -> tuple:
+    """
+    Validate voucher list before inserting.
+    Returns (valid_vouchers, errors_list)
+    """
+    valid = []
+    errors = []
+    seen_guids = set()
+    
+    for v in vouchers:
+        v_errors = []
+        
+        # Required fields check
+        if not v.get('tally_guid'):
+            v_errors.append("Missing GUID")
+        if not v.get('date'):
+            v_errors.append("Missing date")
+        if not v.get('voucher_type_name'):
+            v_errors.append("Missing voucher type")
+
+        # Duplicate GUID check (within this batch)
+        if v.get('tally_guid') in seen_guids:
+            v_errors.append(f"Duplicate GUID in batch: {v['tally_guid']}")
+        elif v.get('tally_guid'):
+            seen_guids.add(v['tally_guid'])
+
+        # Debit = Credit check (within ±0.01)
+        if v.get('ledgers'):
+            debit_total = sum(abs(l['amount']) for l in v['ledgers'] if l.get('is_debit'))
+            credit_total = sum(abs(l['amount']) for l in v['ledgers'] if not l.get('is_debit'))
+            if debit_total > 0 and credit_total > 0:
+                if abs(debit_total - credit_total) > 0.01:
+                    v_errors.append(f"Debit({debit_total:.2f}) != Credit({credit_total:.2f})")
+
+        if v_errors:
+            errors.append({'guid': v.get('tally_guid'), 'errors': v_errors})
+        else:
+            valid.append(v)
+    
+    return valid, errors
+
+def get_last_alter_id(sb, company_id: str) -> int:
+    """Get the last synced ALTERID from sync_checkpoints for incremental sync."""
+    try:
+        res = sb.table("sync_checkpoints").select("last_alter_id").eq("company_id", company_id).limit(1).execute()
+        if res.data and len(res.data) > 0:
+            return int(res.data[0].get("last_alter_id") or 0)
+    except Exception as e:
+        log(f"  Could not fetch sync checkpoint: {e}", "WARN")
+    return 0
+
+def update_checkpoint(sb, company_id: str, last_alter_id: int, sync_id: str):
+    """Update the sync checkpoint after a successful sync."""
+    try:
+        sb.table("sync_checkpoints").upsert({
+            "company_id": company_id,
+            "last_alter_id": last_alter_id,
+            "last_successful_sync_id": sync_id,
+            "status": "success",
+            "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }, on_conflict="company_id").execute()
+    except Exception as e:
+        log(f"  Failed to update checkpoint: {e}", "WARN")
+
+def save_sync_archive(sb, filename: str, company_id: str, sync_id: str, xml_size: int):
+    """Save archive metadata to the sync_archives table."""
+    try:
+        sb.table("sync_archives").insert({
+            "filename": filename,
+            "company_id": company_id,
+            "sync_id": sync_id,
+            "sync_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "xml_size": xml_size,
+            "status": "archived"
+        }).execute()
+    except Exception as e:
+        log(f"  Failed to save archive metadata: {e}", "WARN")
+
+def sync_company(sb, company_name: str):
+    log(f">>> Starting Sync for: {company_name} <<<")
+    sync_start = datetime.datetime.now(datetime.timezone.utc)
+    sync_id = f"SYNC-{int(sync_start.timestamp())}-{uuid.uuid4().hex[:6].upper()}"
+    
+    stats = {
+        "records_inserted": 0, "records_updated": 0,
+        "records_failed": 0, "validation_failures": 0,
+        "duplicates_detected": 0, "status": "success",
+        "error_message": None
+    }
+
+    # 1. Ensure company exists in Supabase
+    try:
+        existing = sb.table("companies").select("id").eq("name", company_name).execute()
+        if existing.data:
+            company_id = existing.data[0]["id"]
+        else:
+            res = sb.table("companies").insert({"name": company_name}).execute()
+            company_id = res.data[0]["id"]
+        log(f"  Company ID: {company_id}")
+    except Exception as e:
+        log(f"  FATAL: Failed to register company: {e}", "ERROR")
+        return
+
+    tally = TallyClient(url=TALLY_URL, company_name=company_name)
+    last_alter_id = get_last_alter_id(sb, company_id)
+    max_alter_id = last_alter_id
+    log(f"  Incremental sync from ALTERID > {last_alter_id}")
+
+    # 2. Fetch Ledgers (incremental by ALTERID)
+    log("  Fetching ledgers...")
+    ledgers_xml = None
+    for attempt in range(3):
+        try:
+            ledgers_xml = tally.export_master_by_alterid("Ledger", last_alter_id)
+            break
+        except Exception as e:
+            wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
+            log(f"  Ledger fetch attempt {attempt+1} failed. Retry in {wait}s", "WARN")
+            time.sleep(wait)
+
+    if ledgers_xml:
+        archive_xml(ledgers_xml, company_name, sync_id, "ledgers")
+        ledgers = tally.parse_ledgers(ledgers_xml)
+        log(f"  Parsed {len(ledgers)} new/modified ledgers")
+        l_ok = 0
+        for i in range(0, len(ledgers), BATCH_SIZE):
+            batch = ledgers[i:i+BATCH_SIZE]
+            insert_data = []
+            for l in batch:
+                clean_gstin = re.sub(r'[^A-Za-z0-9]', '', l.get("gstin") or "")[:15]
+                clean_phone = (l.get("phone") or "").strip()[:15]
+                clean_state = (l.get("state") or "").strip()[:15]
+                clean_email = (l.get("email") or "").strip()[:100]
+                clean_contact = (l.get("contact_person") or "").strip()[:100]
+                
+                insert_data.append({
+                    "company_id": company_id, "name": l["name"],
+                    "parent_group": l.get("parent_group"), "tally_guid": l["tally_guid"],
+                    "opening_balance": float(l.get("opening_balance", 0)),
+                    "closing_balance": float(l.get("closing_balance", 0)),
+                    "gstin": clean_gstin, "state": clean_state,
+                    "phone": clean_phone, "contact_person": clean_contact,
+                    "email": clean_email,
+                    "credit_limit": float(l.get("credit_limit", 0)),
+                    "credit_days": int(l.get("credit_days", 0))
+                })
+            if insert_data:
+                try:
+                    sb.table("ledgers").upsert(insert_data, on_conflict="tally_guid").execute()
+                    l_ok += len(insert_data)
+                except Exception as e:
+                    log(f"  Error bulk upserting ledgers batch: {e}", "ERROR")
+                    stats["records_failed"] += len(insert_data)
+        log(f"  Ledgers: {l_ok} synced")
+        stats["records_inserted"] += l_ok
+
+    # 3. Fetch Stock Items
+    log("  Fetching stock items...")
+    stock_items_xml = None
+    for attempt in range(3):
+        try:
+            stock_items_xml = tally.export_stock_items()
+            break
+        except Exception as e:
+            time.sleep(RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60)
+
+    if stock_items_xml:
+        archive_xml(stock_items_xml, company_name, sync_id, "stock_items")
+        stock_items = tally.parse_stock_items(stock_items_xml)
+        log(f"  Parsed {len(stock_items)} stock items")
+        s_ok = 0
+        for i in range(0, len(stock_items), BATCH_SIZE):
+            batch = stock_items[i:i+BATCH_SIZE]
+            insert_data = []
+            for s in batch:
+                insert_data.append({
+                    "company_id": company_id, "name": s["name"],
+                    "parent_group": s.get("parent_group"), "tally_guid": s["tally_guid"],
+                    "base_units": s.get("base_units", "nos"),
+                    "opening_balance_qty": float(s.get("opening_balance_qty", 0)),
+                    "opening_balance_value": float(s.get("opening_balance_value", 0)),
+                    "closing_balance_qty": float(s.get("closing_balance_qty", 0)),
+                    "closing_balance_value": float(s.get("closing_balance_value", 0))
+                })
+            if insert_data:
+                try:
+                    sb.table("stock_items").upsert(insert_data, on_conflict="tally_guid").execute()
+                    s_ok += len(insert_data)
+                except Exception as e:
+                    log(f"  Error bulk upserting stock items batch: {e}", "ERROR")
+                    stats["records_failed"] += len(insert_data)
+        log(f"  Stock Items: {s_ok} synced")
+        stats["records_inserted"] += s_ok
+
+    # 4. Fetch Vouchers (full date range to catch all)
+    log("  Fetching vouchers...")
+    vouchers_xml = None
+    for attempt in range(3):
+        try:
+            vouchers_xml = tally.export_vouchers()
+            break
+        except Exception as e:
+            wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
+            log(f"  Voucher fetch attempt {attempt+1} failed. Retry in {wait}s", "WARN")
+            time.sleep(wait)
+
+    if vouchers_xml:
+        filename = archive_xml(vouchers_xml, company_name, sync_id, "vouchers")
+        save_sync_archive(sb, filename, company_id, sync_id, len(vouchers_xml))
+        
+        vouchers_raw = tally.parse_vouchers(vouchers_xml)
+        log(f"  Parsed {len(vouchers_raw)} vouchers from Tally")
+        
+        # Validation
+        vouchers, validation_errors = validate_vouchers(vouchers_raw)
+        stats["validation_failures"] = len(validation_errors)
+        if validation_errors:
+            log(f"  Validation failures: {len(validation_errors)} (skipping those records)", "WARN")
+            for err in validation_errors[:5]:  # Log first 5
+                log(f"    -> {err}", "WARN")
+
+        # Get existing GUIDs for duplicate check
+        try:
+            existing_res = sb.table("vouchers").select("tally_guid").eq("company_id", company_id).execute()
+            existing_guids = {row["tally_guid"] for row in (existing_res.data or [])}
+        except Exception:
+            existing_guids = set()
+
+        new_vouchers = [v for v in vouchers if v.get("tally_guid") not in existing_guids]
+        update_vouchers = [v for v in vouchers if v.get("tally_guid") in existing_guids]
+        stats["duplicates_detected"] = len(vouchers_raw) - len(vouchers)
+        log(f"  New: {len(new_vouchers)}, Updates: {len(update_vouchers)}, Skipped invalid: {len(validation_errors)}")
+
+        # Filter to only new or modified vouchers since last alter id checkpoint
+        v_new_or_modified = [v for v in vouchers if int(v.get("alter_id") or 0) > last_alter_id]
+        log(f"  Processing {len(v_new_or_modified)} new/altered vouchers since ALTERID={last_alter_id}...")
+
+        v_ok = 0
+        v_batch_size = 200
+        for i in range(0, len(v_new_or_modified), v_batch_size):
+            batch = v_new_or_modified[i:i+v_batch_size]
+            for v in batch:
+                alter_id_val = int(v.get("alter_id") or 0)
+                if alter_id_val > max_alter_id:
+                    max_alter_id = alter_id_val
+            
+            db_batch = []
+            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            for v in batch:
+                db_batch.append({
+                    "company_id": company_id, "tally_guid": v["tally_guid"],
+                    "voucher_type_name": v["voucher_type_name"],
+                    "voucher_number": v.get("voucher_number"),
+                    "date": v["date"], "party_ledger_name": v.get("party_ledger_name", "Cash"),
+                    "amount": float(v.get("amount", 0)), "narration": v.get("narration"),
+                    "reference": v.get("reference"), "is_cancelled": v.get("is_cancelled", False),
+                    "is_deleted": v.get("is_deleted", False), "is_optional": v.get("is_optional", False),
+                    "entered_by": v.get("entered_by", ""), "altered_by": v.get("altered_by", ""),
+                    "updated_at": now_iso
+                })
+                
+            try:
+                v_res = sb.table("vouchers").upsert(db_batch, on_conflict="tally_guid").execute()
+                if v_res.data:
+                    guid_to_id = {row["tally_guid"]: row["id"] for row in v_res.data if row.get("tally_guid")}
+                    voucher_ids = list(guid_to_id.values())
+                    
+                    if voucher_ids:
+                        sb.table("voucher_ledgers").delete().in_("voucher_id", voucher_ids).execute()
+                        sb.table("voucher_inventory").delete().in_("voucher_id", voucher_ids).execute()
+                        
+                    ledger_entries = []
+                    inv_entries = []
+                    for v in batch:
+                        v_db_id = guid_to_id.get(v["tally_guid"])
+                        if not v_db_id:
+                            continue
+                        
+                        if v.get("ledgers"):
+                            for l in v["ledgers"]:
+                                ledger_entries.append({
+                                    "voucher_id": v_db_id,
+                                    "ledger_name": l["ledger_name"],
+                                    "amount": float(l["amount"]),
+                                    "is_debit": l.get("is_debit", False)
+                                })
+                                
+                        if v.get("inventory"):
+                            for inv in v["inventory"]:
+                                inv_entries.append({
+                                    "voucher_id": v_db_id,
+                                    "stock_item_name": inv["stock_item_name"],
+                                    "billed_qty": float(inv["billed_qty"]),
+                                    "actual_qty": float(inv.get("billed_qty", 0)),
+                                    "rate": float(inv.get("rate", 0)),
+                                    "amount": float(inv["amount"]),
+                                    "is_inward": inv.get("is_inward", True)
+                                })
+                                
+                    if ledger_entries:
+                        for j in range(0, len(ledger_entries), BATCH_SIZE):
+                            sb.table("voucher_ledgers").insert(ledger_entries[j:j+BATCH_SIZE]).execute()
+                            
+                    if inv_entries:
+                        for j in range(0, len(inv_entries), BATCH_SIZE):
+                            sb.table("voucher_inventory").insert(inv_entries[j:j+BATCH_SIZE]).execute()
+                            
+                    v_ok += len(batch)
+            except Exception as e:
+                log(f"  Failed batch in voucher upsert: {e}", "WARN")
+                stats["records_failed"] += len(batch)
+                
+        log(f"  Vouchers: {v_ok}/{len(v_new_or_modified)} synced successfully")
+        stats["records_inserted"] += v_ok
+
+        # Mark deleted vouchers
+        try:
+            synced_guids = [v["tally_guid"] for v in vouchers if v.get("tally_guid")]
+            db_vouchers = sb.table("vouchers").select("tally_guid").eq("company_id", company_id).eq("is_deleted", False).execute()
+            if db_vouchers.data:
+                db_guids = [row["tally_guid"] for row in db_vouchers.data if row.get("tally_guid")]
+                deleted_guids = list(set(db_guids) - set(synced_guids))
+                if deleted_guids:
+                    log(f"  Marking {len(deleted_guids)} deleted vouchers...")
+                    for i in range(0, len(deleted_guids), 500):
+                        sb.table("vouchers").update({"is_deleted": True}).in_("tally_guid", deleted_guids[i:i+500]).execute()
+        except Exception as e:
+            log(f"  Error marking deleted vouchers: {e}", "WARN")
+
+    # 5. Fetch Outstandings
+    log("  Fetching outstandings...")
+    for r_type in ["Receivables", "Payables"]:
+        for attempt in range(3):
+            try:
+                out_xml = tally.export_outstandings(r_type)
+                if out_xml:
+                    bills = tally.parse_outstandings(out_xml, r_type)
+                    for b in bills:
+                        b["party_group"] = "receivable" if r_type == "Receivables" else "payable"
+                    
+                    if bills:
+                        today = datetime.datetime.now().strftime("%Y-%m-%d")
+                        sb.table("outstanding_bills").delete().eq("company_name", company_name).eq(
+                            "party_group", bills[0]["party_group"]).execute()
+                        for i in range(0, len(bills), 200):
+                            batch = bills[i:i+200]
+                            sb.table("outstanding_bills").insert([{
+                                "company_name": company_name,
+                                "party_ledger": b["party_ledger"],
+                                "party_group": b["party_group"],
+                                "bill_ref": b["bill_ref"],
+                                "bill_type": b["bill_type"],
+                                "bill_date": parse_tally_date(b["bill_date"]),
+                                "due_date": parse_tally_date(b["due_date"]),
+                                "pending_amount": b["pending_amount"],
+                                "as_on_date": today
+                            } for b in batch]).execute()
+                        log(f"  {r_type}: {len(bills)} bills synced")
+                        stats["records_inserted"] += len(bills)
+                break
+            except Exception as e:
+                time.sleep(RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60)
+
+    # 6. Reconciliation check
+    log("  Running reconciliation check...")
+    reconciliation_status = "SKIPPED"
+    reconciliation_variance = 0.0
+    try:
+        db_count_res = sb.table("vouchers").select("id", count="exact").eq("company_id", company_id).eq("is_deleted", False).execute()
+        db_count = db_count_res.count or 0
+        tally_count = len(vouchers_raw) if vouchers_xml else 0
+        variance = abs(tally_count - db_count)
+        reconciliation_variance = float(variance)
+        if variance <= 5:
+            reconciliation_status = "PASSED"
+            log(f"  Reconciliation PASSED: Tally={tally_count}, DB={db_count}")
+        else:
+            reconciliation_status = "FAILED"
+            log(f"  Reconciliation FAILED: Tally={tally_count}, DB={db_count}, Variance={variance}", "WARN")
+    except Exception as e:
+        log(f"  Reconciliation error: {e}", "WARN")
+        reconciliation_status = "ERROR"
+
+    # 7. Update checkpoint
+    if max_alter_id > last_alter_id:
+        update_checkpoint(sb, company_id, max_alter_id, sync_id)
+        log(f"  Checkpoint updated to ALTERID={max_alter_id}")
+
+    # 8. Log sync
+    sync_end = datetime.datetime.now(datetime.timezone.utc)
+    duration_ms = int((sync_end - sync_start).total_seconds() * 1000)
+    try:
+        sb.table("sync_logs").insert({
+            "sync_id": sync_id,
+            "company_id": company_id,
+            "sync_source": "enterprise-main.py",
+            "started_at": sync_start.isoformat(),
+            "completed_at": sync_end.isoformat(),
+            "status": stats["status"],
+            "records_inserted": stats["records_inserted"],
+            "records_updated": stats["records_updated"],
+            "records_failed": stats["records_failed"],
+            "error_message": stats.get("error_message"),
+            "last_alterid_synced": str(max_alter_id)
+        }).execute()
+    except Exception as e:
+        log(f"  Failed to save sync log: {e}", "WARN")
+
+    log(f">>> Sync COMPLETE for {company_name} in {duration_ms}ms | Records: {stats['records_inserted']} | Status: {stats['status']} <<<")
 
 def sync_job():
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Starting sync...")
+    global _sync_running
+    if _sync_running:
+        log("Previous sync still running. Skipping this cycle.", "WARN")
+        return
+    _sync_running = True
     
-    # 1. Fetch from Tally with incremental ALTERID if supported
-    last_ledger_id = get_last_alter_id('ledgers')
-    # Use custom collection with ALTERID filter for ledgers
-    ledgers_xml = tally.export_master_by_alterid("Ledger", last_ledger_id)
-    ledgers = tally.parse_ledgers(ledgers_xml)
+    log(f"=== DAEMON RUN: SCANNING TALLY FOR OPEN COMPANIES ===")
     
-    # Vouchers
-    # Wait, Tally's daybook can't easily filter by ALTERID in standard XML. 
-    # Usually we'd use a custom collection for vouchers too.
-    # For now, we will still fetch vouchers and simulate.
-    vouchers_xml = tally.export_vouchers() 
-    vouchers = tally.parse_vouchers(vouchers_xml)
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("Supabase not configured. Check .env file.", "ERROR")
+        _sync_running = False
+        return
+
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+    open_companies = get_open_companies()
+    target_company = "SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)"
     
-    # Dummy parse for godowns, cost centres, edit_logs
-    # In a full implementation we'd add parsing methods in tally_client and use them
-    godowns = [] 
-    cost_centres = []
-    edit_logs = []
+    # Check if our target company is open
+    ssl_open = [c for c in open_companies if target_company.lower() in c.lower()]
     
-    # 2. Push to FastAPI Backend
+    if not ssl_open:
+        log(f"Target company '{target_company}' is not open in Tally (or Tally not running).")
+        _sync_running = False
+        return
+ 
+    log(f"Active Sync Target: {ssl_open[0]}")
     try:
-        if ledgers:
-            res_ledgers = requests.post(f"{BACKEND_API_URL}/ledgers?company_id={COMPANY_ID}", json=ledgers)
-            print("Ledgers sync response:", res_ledgers.status_code, res_ledgers.text)
-            
-        if vouchers:
-            res_vouchers = requests.post(f"{BACKEND_API_URL}/vouchers?company_id={COMPANY_ID}", json=vouchers)
-            print("Vouchers sync response:", res_vouchers.status_code, res_vouchers.text)
-            
-        if godowns:
-            requests.post(f"{BACKEND_API_URL}/godowns?company_id={COMPANY_ID}", json=godowns)
-            
-        if cost_centres:
-            requests.post(f"{BACKEND_API_URL}/cost_centres?company_id={COMPANY_ID}", json=cost_centres)
-            
-        if edit_logs:
-            requests.post(f"{BACKEND_API_URL}/edit_log?company_id={COMPANY_ID}", json=edit_logs)
-            
+        sync_company(sb, ssl_open[0])
     except Exception as e:
-        print("Failed to push data to backend:", e)
+        log(f"FATAL sync failure for {ssl_open[0]}: {e}\n{traceback.format_exc()}", "ERROR")
+
+    log(f"=== DAEMON RUN COMPLETE ===\n")
+    _sync_running = False
 
 if __name__ == "__main__":
+    print("=" * 60)
+    print("ENTERPRISE TALLY SYNC AGENT")
+    print(f"Tally endpoint:  {TALLY_URL}")
+    print(f"Supabase:        {SUPABASE_URL}")
+    print(f"Sync interval:   {SYNC_INTERVAL}s")
+    print(f"Batch size:      {BATCH_SIZE} records")
+    print(f"Archive dir:     {ARCHIVE_DIR}")
+    print("=" * 60)
+
+    # Run immediately at startup
+    sync_job()
+
     scheduler = BackgroundScheduler()
-    # Schedule to run every 30 seconds
-    scheduler.add_job(sync_job, 'interval', seconds=30)
+    scheduler.add_job(sync_job, 'interval', seconds=SYNC_INTERVAL)
     scheduler.start()
-    
-    print("Sync Agent started. Press Ctrl+C to exit.")
-    
+
+    log(f"Sync Agent daemon started. Syncing every {SYNC_INTERVAL} seconds.")
+    log("Press Ctrl+C to exit.")
+
     try:
         while True:
             time.sleep(2)
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
-        print("Sync Agent stopped.")
+        log("Sync Agent daemon stopped.")

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
   const d = new Date(dateString);
@@ -32,6 +33,22 @@ function getTimeBucket(dateString: string, startDateStr: string | null, endDateS
   }
 }
 
+const getEmptyState = () => ({
+  kpis: {
+    grossSales: { value: 0, growth: 0 },
+    salesReturns: { value: 0, growth: 0 },
+    netSales: { value: 0, growth: 0 },
+    gstCollected: { value: 0, growth: 0 },
+    pendingOrders: { value: 0, growth: 0 }
+  },
+  salesTrend: [],
+  salesByProduct: [],
+  salesByRegion: [],
+  topCustomers: [],
+  churnedCustomers: [],
+  detailedTransactions: [],
+  returnsByProduct: []
+});
 
 export async function GET(request: Request) {
   try {
@@ -39,16 +56,121 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    // Handle Active Company Filtering
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+    
+    let companyId = null;
+    const decodedName = decodeURIComponent(activeCompany);
+    const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
+    if (comp) {
+      companyId = comp.id;
+    } else {
+      const { data: bkmComp } = await supabase.from('companies').select('id').eq('name', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)').single();
+      if (bkmComp) {
+        companyId = bkmComp.id;
+      } else {
+        return NextResponse.json(getEmptyState());
+      }
+    }
+
     // 1. Fetch live data from Supabase
     let query = supabase
       .from('vouchers')
-      .select('*, voucher_ledgers(*), voucher_inventory(*)');
+      .select('id, date, voucher_type_name, voucher_number, tally_guid, party_ledger_name, amount, is_deleted, is_cancelled, is_optional')
+      .eq('is_deleted', false)
+      .eq('is_cancelled', false)
+      .eq('is_optional', false)
+      .or('voucher_type_name.ilike.%sales%,voucher_type_name.ilike.%pos invoice%,voucher_type_name.ilike.%credit note%,voucher_type_name.ilike.%delivery note%,voucher_type_name.ilike.%return%');
 
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
     if (startDate) query = query.gte('date', startDate);
     if (endDate) query = query.lte('date', endDate);
 
-    const { data: vouchers, error } = await query;
-    const { data: ledgers, error: ledgersError } = await supabase.from('ledgers').select('name, state');
+    const { data: vouchersRaw, error: fetchError } = await fetchAllData(query);
+    let error = fetchError;
+    let vouchers: any[] = [];
+
+    if (!error && vouchersRaw && vouchersRaw.length > 0) {
+      try {
+        const voucherIds = vouchersRaw.map((v: any) => v.id);
+        
+        // Fetch voucher_ledgers in chunks
+        const ledgers: any[] = [];
+        const chunkSize = 150; // Reduced from 500 to prevent 16KB URL limit on Supabase .in() query
+        for (let i = 0; i < voucherIds.length; i += chunkSize) {
+          const chunk = voucherIds.slice(i, i + chunkSize);
+          const { data: lData, error: lErr } = await fetchAllData(
+            supabase
+              .from('voucher_ledgers')
+              .select('voucher_id, ledger_name, amount')
+              .in('voucher_id', chunk)
+          );
+          if (lErr) throw lErr;
+          if (lData) ledgers.push(...lData);
+        }
+
+        // Fetch voucher_inventory in chunks
+        const inventory: any[] = [];
+        for (let i = 0; i < voucherIds.length; i += chunkSize) {
+          const chunk = voucherIds.slice(i, i + chunkSize);
+          const { data: iData, error: iErr } = await fetchAllData(
+            supabase
+              .from('voucher_inventory')
+              .select('voucher_id, stock_item_name, amount, billed_qty, rate')
+              .in('voucher_id', chunk)
+          );
+          if (iErr) throw iErr;
+          if (iData) inventory.push(...iData);
+        }
+
+        // Map child arrays back to parent vouchers
+        const ledgersMap: Record<string, any[]> = {};
+        const inventoryMap: Record<string, any[]> = {};
+
+        ledgers.forEach((l: any) => {
+          if (!ledgersMap[l.voucher_id]) ledgersMap[l.voucher_id] = [];
+          ledgersMap[l.voucher_id].push(l);
+        });
+
+        inventory.forEach((inv: any) => {
+          if (!inventoryMap[inv.voucher_id]) inventoryMap[inv.voucher_id] = [];
+          inventoryMap[inv.voucher_id].push(inv);
+        });
+
+        vouchers = vouchersRaw.map((v: any) => ({
+          ...v,
+          voucher_ledgers: ledgersMap[v.id] || [],
+          voucher_inventory: inventoryMap[v.id] || []
+        }));
+      } catch (err) {
+        error = err;
+      }
+    }
+    
+    let ledgersQuery = supabase.from('ledgers').select('name, state');
+    if (companyId) {
+      ledgersQuery = ledgersQuery.eq('company_id', companyId);
+    }
+    const { data: ledgers, error: ledgersError } = await fetchAllData(ledgersQuery);
+
+    let outstandingsQuery = supabase
+      .from('outstanding_bills')
+      .select('party_ledger, pending_amount')
+      .eq('party_group', 'receivable')
+      .eq('company_name', decodedName);
+    const { data: outstandingBills, error: outstandingError } = await fetchAllData(outstandingsQuery);
+
+    const ledgerOutstandingMap: Record<string, number> = {};
+    if (outstandingBills) {
+      outstandingBills.forEach((bill: any) => {
+        const party = bill.party_ledger;
+        const amt = Number(bill.pending_amount) || 0;
+        ledgerOutstandingMap[party] = (ledgerOutstandingMap[party] || 0) + amt;
+      });
+    }
 
     const isAdjusted = searchParams.get('adjusted') === 'true';
 
@@ -120,8 +242,24 @@ export async function GET(request: Request) {
     const customerSales: Record<string, { amount: number, lastTxDate: string }> = {}; // A6 + Churn
     const regionalSales: Record<string, number> = {}; 
     const regionStates: Record<string, Record<string, number>> = {};
+    const regionStats: Record<string, {
+      revenue: number;
+      returns: number;
+      invoiceCount: number;
+      customers: Set<string>;
+      stateData: Record<string, {
+        revenue: number;
+        returns: number;
+        invoiceCount: number;
+        customers: Record<string, number>;
+        products: Record<string, number>;
+      }>;
+    }> = {};
+    const regionalOutstanding: Record<string, number> = {};
+    const stateOutstanding: Record<string, number> = {};
     const productReturns: Record<string, { qty: number, amount: number, count: number }> = {};
     const detailedTx: any[] = [];
+    const pendingOrdersList: any[] = [];
 
     const stateToRegion: Record<string, string> = {
       "Delhi": "North Region", "Haryana": "North Region", "Punjab": "North Region", "Uttar Pradesh": "North Region", "Uttarakhand": "North Region", "Himachal Pradesh": "North Region", "Jammu & Kashmir": "North Region", "Chandigarh": "North Region",
@@ -134,10 +272,18 @@ export async function GET(request: Request) {
 
     const ledgerStateMap: Record<string, string> = {};
     if (ledgers) {
-      ledgers.forEach((l: any) => {
+      (ledgers || []).forEach((l: any) => {
         if (l.name && l.state) ledgerStateMap[l.name] = l.state;
       });
     }
+
+    Object.entries(ledgerOutstandingMap).forEach(([customerName, amt]) => {
+      const stateName = ledgerStateMap[customerName] || "Unknown State";
+      let region = stateToRegion[stateName] || (stateName !== "Unknown State" ? "Other Region" : "Unknown Region");
+      
+      regionalOutstanding[region] = (regionalOutstanding[region] || 0) + amt;
+      stateOutstanding[stateName] = (stateOutstanding[stateName] || 0) + amt;
+    });
 
     for (const v of activeVouchers) {
       const isSales = v.voucher_type_name.toLowerCase().includes('sales') || v.voucher_type_name === 'POS Invoice';
@@ -149,11 +295,26 @@ export async function GET(request: Request) {
       
       const bucket = getTimeBucket(v.date, startDate, endDate);
 
-      const isSale = isSales;
+      const isSale = isSales && !isOrder && !isDelivery && !isCreditNote && !v.voucher_type_name.toLowerCase().includes('debit note');
       const isReturn = isCreditNote || v.voucher_type_name.toLowerCase().includes('return');
 
       if (isOrder) {
         pendingOrdersAmount += val; // A11
+        pendingOrdersList.push({
+          id: v.voucher_number || v.tally_guid.substring(0,8),
+          date: v.date,
+          customer: v.party_ledger_name || "Cash",
+          amount: val,
+          product: v.voucher_inventory?.[0]?.stock_item_name || (v.voucher_inventory?.length > 1 ? "Multiple Items" : "None"),
+          qty: v.voucher_inventory?.[0]?.billed_qty || 0,
+          rate: v.voucher_inventory?.[0]?.rate || 0,
+          items: (v.voucher_inventory || []).map((inv: any) => ({
+             product: inv.stock_item_name || "Unknown",
+             qty: inv.billed_qty || 0,
+             rate: inv.rate || 0,
+             amount: inv.amount || 0
+          }))
+        });
       }
 
       if (isSale) {
@@ -184,11 +345,75 @@ export async function GET(request: Request) {
           regionalSales[region] = (regionalSales[region] || 0) + val;
           if (!regionStates[region]) regionStates[region] = {};
           regionStates[region][stateName] = (regionStates[region][stateName] || 0) + val;
+
+          // Accumulate detailed regional/state statistics
+          if (!regionStats[region]) {
+            regionStats[region] = {
+              revenue: 0,
+              returns: 0,
+              invoiceCount: 0,
+              customers: new Set(),
+              stateData: {}
+            };
+          }
+          regionStats[region].revenue += val;
+          regionStats[region].invoiceCount += 1;
+          regionStats[region].customers.add(v.party_ledger_name);
+
+          if (!regionStats[region].stateData[stateName]) {
+            regionStats[region].stateData[stateName] = {
+              revenue: 0,
+              returns: 0,
+              invoiceCount: 0,
+              customers: {},
+              products: {}
+            };
+          }
+          const sd = regionStats[region].stateData[stateName];
+          sd.revenue += val;
+          sd.invoiceCount += 1;
+          sd.customers[v.party_ledger_name] = (sd.customers[v.party_ledger_name] || 0) + val;
+
+          if (v.voucher_inventory) {
+            v.voucher_inventory.forEach((inv: any) => {
+              const pName = inv.stock_item_name || "Unknown Product";
+              const iVal = Number(inv.amount) || 0;
+              sd.products[pName] = (sd.products[pName] || 0) + iVal;
+            });
+          }
         }
       }
 
       if (isReturn) {
         salesReturns += val; // A7
+        
+        if (v.party_ledger_name) {
+          const stateName = ledgerStateMap[v.party_ledger_name] || "Unknown State";
+          let region = stateToRegion[stateName] || (stateName !== "Unknown State" ? "Other Region" : "Unknown Region");
+
+          if (!regionStats[region]) {
+            regionStats[region] = {
+              revenue: 0,
+              returns: 0,
+              invoiceCount: 0,
+              customers: new Set(),
+              stateData: {}
+            };
+          }
+          regionStats[region].returns = (regionStats[region].returns || 0) + val;
+
+          if (!regionStats[region].stateData[stateName]) {
+            regionStats[region].stateData[stateName] = {
+              revenue: 0,
+              returns: 0,
+              invoiceCount: 0,
+              customers: {},
+              products: {}
+            };
+          }
+          const sd = regionStats[region].stateData[stateName];
+          sd.returns = (sd.returns || 0) + val;
+        }
       }
 
       // Both Sales and Returns affect GST (Returns reduce GST, but here we just sum GST output for sales)
@@ -275,8 +500,8 @@ export async function GET(request: Request) {
 
     // Transform Customer Sales
     const topCustomersArr = Object.entries(customerSales)
-      .map(([name, data]) => ({ name, value: data.amount, lastTxDate: data.lastTxDate }))
-      .sort((a, b) => b.value - a.value);
+      .map(([name, data]) => ({ name, sales: data.amount, value: data.amount, lastTxDate: data.lastTxDate }))
+      .sort((a, b) => b.sales - a.sales);
 
     const churnedCustomers = topCustomersArr
       .filter(c => {
@@ -287,12 +512,40 @@ export async function GET(request: Request) {
       })
       .slice(0, 10); // Top 10 churn risks
 
-    const salesByRegionArr = Object.entries(regionalSales)
-      .map(([name, value]) => {
-        const states = Object.entries(regionStates[name] || {})
-          .map(([stateName, stateSales]) => ({ name: stateName, sales: stateSales }))
+    const salesByRegionArr = Object.entries(regionStats)
+      .map(([regionName, rStat]) => {
+        const states = Object.entries(rStat.stateData)
+          .map(([stateName, sStat]) => {
+            const topCustEntry = Object.entries(sStat.customers)
+              .sort((a, b) => b[1] - a[1])[0];
+            const topCustomer = topCustEntry ? { name: topCustEntry[0], sales: topCustEntry[1] } : null;
+
+            const topProdEntry = Object.entries(sStat.products)
+              .sort((a, b) => b[1] - a[1])[0];
+            const topProduct = topProdEntry ? { name: topProdEntry[0], sales: topProdEntry[1] } : null;
+
+            return {
+              name: stateName,
+              sales: sStat.revenue,
+              returns: sStat.revenue > 0 ? (sStat.returns || 0) : 0,
+              outstanding: stateOutstanding[stateName] || 0,
+              invoiceCount: sStat.invoiceCount,
+              customerCount: Object.keys(sStat.customers).length,
+              topCustomer,
+              topProduct
+            };
+          })
           .sort((a, b) => b.sales - a.sales);
-        return { name, value, states };
+
+        return {
+          name: regionName,
+          value: rStat.revenue,
+          returns: rStat.revenue > 0 ? (rStat.returns || 0) : 0,
+          outstanding: regionalOutstanding[regionName] || 0,
+          invoiceCount: rStat.invoiceCount,
+          customerCount: rStat.customers.size,
+          states
+        };
       })
       .sort((a, b) => b.value - a.value);
 
@@ -312,6 +565,15 @@ export async function GET(request: Request) {
       }))
       .sort((a, b) => b.returns - a.returns);
 
+    let minDate: string | null = null;
+    let maxDate: string | null = null;
+    vouchers?.forEach(v => {
+      if (v.date) {
+        if (!minDate || v.date < minDate) minDate = v.date;
+        if (!maxDate || v.date > maxDate) maxDate = v.date;
+      }
+    });
+
     const liveData = {
       kpis: {
         grossSales: { value: grossSales, growth: 0 },
@@ -326,7 +588,9 @@ export async function GET(request: Request) {
       topCustomers: topCustomersArr,
       churnedCustomers: churnedCustomers,
       detailedTransactions: detailedTx.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-      returnsByProduct: returnsByProductArr
+      pendingOrdersList: pendingOrdersList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      returnsByProduct: returnsByProductArr,
+      dateBounds: { minDate, maxDate }
     };
 
     return NextResponse.json(liveData);

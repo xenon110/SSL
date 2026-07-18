@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, TrendingDown, Users, Activity, AlertCircle, MapPin, X, ChevronRight, Package, IndianRupee, Calendar, ArrowUpRight, ArrowDownRight, Search, ArrowUpDown, Filter, ChevronLeft, ChevronRight as ChevronRightIcon, ChevronDown, ChevronUp, Receipt } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Users, Activity, AlertCircle, MapPin, X, ChevronRight, Package, IndianRupee, Calendar, ArrowUpRight, ArrowDownRight, Search, ArrowUpDown, Filter, ChevronLeft, ChevronRight as ChevronRightIcon, ChevronDown, ChevronUp, Receipt, Sparkles } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
@@ -17,7 +17,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default function SalesDashboard() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const currentMonth = d.getMonth();
+    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdjustedView, setIsAdjustedView] = useState(false);
@@ -28,6 +36,63 @@ export default function SalesDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: 'date' | 'amount' | 'qty'; direction: 'desc' | 'asc' }>({ key: 'date', direction: 'desc' });
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+  const [expandedRegions, setExpandedRegions] = useState<Record<string, boolean>>({});
+  const [aiData, setAiData] = useState<any>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const fetchAiInsights = useCallback(async () => {
+    try {
+      setIsAiLoading(true);
+      setAiError(null);
+      let url = '/api/sales/ai';
+      const params = new URLSearchParams();
+      if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
+      if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+      if (isAdjustedView) params.append('adjusted', 'true');
+      if (params.toString()) url += '?' + params.toString();
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to fetch AI insights');
+      }
+      const data = await res.json();
+      setAiData(data);
+    } catch (err: any) {
+      console.error("AI fetch error:", err);
+      setAiError(err.message || 'Error occurred');
+    } finally {
+      setIsAiLoading(false);
+    }
+  }, [dateRange, isAdjustedView]);
+
+  useEffect(() => {
+    if (showAiPanel && !aiData && !isAiLoading) {
+      fetchAiInsights();
+    }
+  }, [showAiPanel, aiData, isAiLoading, fetchAiInsights]);
+
+  useEffect(() => {
+    setAiData(null);
+  }, [dateRange]);
+
+  // KPI Detail States
+  const [selectedKpi, setSelectedKpi] = useState<'gross' | 'net' | 'returns' | 'pending' | null>(null);
+  const [kpiSearchQuery, setKpiSearchQuery] = useState("");
+  const [kpiPage, setKpiPage] = useState(1);
+  const [kpiExpandedTxId, setKpiExpandedTxId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setKpiSearchQuery("");
+    setKpiPage(1);
+    setKpiExpandedTxId(null);
+  }, [selectedKpi]);
 
   // Global Ledger States
   const [globalSearch, setGlobalSearch] = useState("");
@@ -52,6 +117,8 @@ export default function SalesDashboard() {
         if (!res.ok) throw new Error('Failed to fetch data');
         const apiData = await res.json();
         setData(apiData);
+
+        
       } catch (error) {
         console.error("Error fetching live data:", error);
       } finally {
@@ -274,6 +341,14 @@ export default function SalesDashboard() {
   const uniqueCustomers = useMemo(() => Array.from(new Set((data?.detailedTransactions || []).map((t: any) => t.customer).filter(Boolean))) as string[], [data]);
   const uniqueProducts = useMemo(() => Array.from(new Set((data?.detailedTransactions || []).map((t: any) => t.product).filter(Boolean))) as string[], [data]);
 
+  const predictionUrl = useMemo(() => {
+    let url = '/sales/prediction';
+    const params = new URLSearchParams();
+    if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
+    if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+    if (params.toString()) url += '?' + params.toString();
+    return url;
+  }, [dateRange]);
 
   return (
     <div className="flex-1 space-y-6 pb-8 px-2 animate-in fade-in duration-700">
@@ -301,8 +376,20 @@ export default function SalesDashboard() {
             </button>
           </div>
         </div>
-        <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
-           <DateRangePicker onDateChange={setDateRange} />
+        <div className="flex items-center gap-3">
+          <a
+            href={predictionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-lg shadow-md hover:scale-102 active:scale-98 transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4 text-white animate-pulse" />
+            AI Future Prediction
+          </a>
+          
+          <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
+              <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+          </div>
         </div>
       </div>
 
@@ -318,7 +405,10 @@ export default function SalesDashboard() {
       
       {/* KPI Scorecards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300">
+        <Card 
+          onClick={() => setSelectedKpi('gross')}
+          className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300 cursor-pointer hover:ring-2 hover:ring-blue-500"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign className="w-24 h-24 text-blue-600" /></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500">Gross Revenue</CardTitle>
@@ -329,7 +419,10 @@ export default function SalesDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300">
+        <Card 
+          onClick={() => setSelectedKpi('net')}
+          className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300 cursor-pointer hover:ring-2 hover:ring-emerald-500"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-24 h-24 text-emerald-600" /></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500">Net Sales</CardTitle>
@@ -340,7 +433,10 @@ export default function SalesDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300">
+        <Card 
+          onClick={() => setSelectedKpi('returns')}
+          className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300 cursor-pointer hover:ring-2 hover:ring-rose-500"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingDown className="w-24 h-24 text-rose-600" /></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500">Returns</CardTitle>
@@ -351,7 +447,10 @@ export default function SalesDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300">
+        <Card 
+          onClick={() => setSelectedKpi('pending')}
+          className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300 cursor-pointer hover:ring-2 hover:ring-amber-500"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10"><AlertCircle className="w-24 h-24 text-amber-600" /></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500">Pending Orders</CardTitle>
@@ -459,8 +558,8 @@ export default function SalesDashboard() {
                  </TableHeader>
                  <TableBody>
                    {(data.returnsByProduct || []).slice(0, 5).map((p: any, i: number) => (
-                     <TableRow key={i}>
-                       <TableCell className="text-xs font-medium text-slate-700 dark:text-slate-200">{p.name}</TableCell>
+                     <TableRow key={i} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50" onClick={() => setDrillDown({ type: 'product', name: p.name })}>
+                       <TableCell className="text-xs font-medium text-indigo-600 hover:underline">{p.name}</TableCell>
                        <TableCell className="text-right text-xs tabular-nums">{p.qty}</TableCell>
                        <TableCell className="text-right text-xs font-bold text-rose-600 tabular-nums">{formatCurrency(p.returns)}</TableCell>
                      </TableRow>
@@ -480,35 +579,165 @@ export default function SalesDashboard() {
         <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl flex flex-col">
           <CardHeader className="flex-none">
             <CardTitle className="flex items-center gap-2 text-xl font-bold"><MapPin className="h-6 w-6 text-emerald-500" /> Sales by Region</CardTitle>
-            <CardDescription className="text-sm">Revenue distribution across territories</CardDescription>
+            <CardDescription className="text-sm">Revenue distribution, outstandings & returns across territories (Click rows to expand details)</CardDescription>
           </CardHeader>
           <CardContent className="flex-1">
              <div className="rounded-xl border shadow-sm overflow-hidden bg-white dark:bg-slate-900">
                <Table>
                  <TableHeader className="bg-slate-50 dark:bg-slate-800">
                    <TableRow>
-                     <TableHead className="text-xs">Region</TableHead>
+                     <TableHead className="text-xs w-[35%]">Region</TableHead>
                      <TableHead className="text-xs text-right">Revenue</TableHead>
+                     <TableHead className="text-xs text-right">Outstanding</TableHead>
                      <TableHead className="text-xs text-right">Share</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
-                    {(data.salesByRegion || []).slice(0, 5).map((r: any, i: number) => (
-                      <TableRow key={i} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50" onClick={() => setDrillDown({ type: 'region', name: r.name })}>
-                        <TableCell className="text-xs font-medium text-indigo-600 hover:underline">{r.name}</TableCell>
-                       <TableCell className="text-right text-xs font-bold text-emerald-600 tabular-nums">{formatCurrency(r.value)}</TableCell>
-                       <TableCell className="text-right text-xs tabular-nums">
-                         <Badge variant="outline" className="text-[10px] bg-slate-100 dark:bg-slate-800">
-                           {((r.value / (data.kpis?.grossSales?.value || 1)) * 100).toFixed(1)}%
-                         </Badge>
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                   {(!data.salesByRegion || data.salesByRegion.length === 0) && (
-                     <TableRow>
-                       <TableCell colSpan={3} className="h-24 text-center text-slate-400 text-sm">No regional data found.</TableCell>
-                     </TableRow>
-                   )}
+                    {(data.salesByRegion || []).map((r: any, i: number) => {
+                      const isExpanded = !!expandedRegions[r.name];
+                      const share = ((r.value / (data.kpis?.grossSales?.value || 1)) * 100).toFixed(1);
+                      return (
+                        <React.Fragment key={i}>
+                          <TableRow className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => setExpandedRegions(prev => ({ ...prev, [r.name]: !prev[r.name] }))}>
+                            <TableCell className="text-xs font-medium">
+                              <div className="flex items-center gap-2">
+                                <span className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                                  )}
+                                </span>
+                                <span 
+                                  className="text-indigo-600 hover:underline cursor-pointer"
+                                  onClick={(e) => { e.stopPropagation(); setDrillDown({ type: 'region', name: r.name }); }}
+                                >
+                                  {r.name}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-bold text-emerald-600 tabular-nums">
+                              {formatCurrency(r.value)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-bold text-rose-500 tabular-nums">
+                              {formatCurrency(r.outstanding || 0)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs tabular-nums">
+                              <Badge variant="outline" className="text-[10px] bg-slate-100 dark:bg-slate-800">
+                                {share}%
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                          
+                          {/* Expanded content */}
+                          {isExpanded && (
+                            <TableRow className="bg-slate-50/30 dark:bg-slate-800/10">
+                              <TableCell colSpan={4} className="p-4 border-t-0">
+                                <div className="space-y-3 pl-6">
+                                  {/* Region Summary Metrics */}
+                                  <div className="grid grid-cols-4 gap-4 text-[11px] text-slate-500 dark:text-slate-400 border-b pb-2">
+                                    <div>
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">Total Invoices:</span> {r.invoiceCount || 0}
+                                    </div>
+                                    <div>
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">Active Customers:</span> {r.customerCount || 0}
+                                    </div>
+                                    <div>
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">Sales Returns:</span> <span className={r.returns > 0 ? "text-rose-600 font-semibold" : ""}>{formatCurrency(r.returns || 0)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">Outstanding:</span> <span className={r.outstanding > 0 ? "text-amber-600 font-semibold" : ""}>{formatCurrency(r.outstanding || 0)}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* States Table */}
+                                  <div className="rounded-lg border bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+                                    <Table>
+                                      <TableHeader className="bg-slate-100/50 dark:bg-slate-800/50">
+                                        <TableRow>
+                                          <TableHead className="text-[10px] py-1.5 h-auto">State</TableHead>
+                                          <TableHead className="text-[10px] py-1.5 h-auto text-right">Revenue</TableHead>
+                                          <TableHead className="text-[10px] py-1.5 h-auto text-right">Outstanding</TableHead>
+                                          <TableHead className="text-[10px] py-1.5 h-auto text-right">Top Customer</TableHead>
+                                          <TableHead className="text-[10px] py-1.5 h-auto text-right">Top Product</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {(r.states || []).map((s: any, j: number) => {
+                                          const stateShare = ((s.sales / (r.value || 1)) * 100).toFixed(1);
+                                          return (
+                                            <TableRow key={j} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                                              <TableCell className="text-[11px] font-medium py-1.5">
+                                                <span 
+                                                  className="text-indigo-600 hover:underline cursor-pointer"
+                                                  onClick={(e) => { e.stopPropagation(); setDrillDown({ type: 'state', name: s.name }); }}
+                                                >
+                                                  {s.name}
+                                                </span>
+                                              </TableCell>
+                                              <TableCell className="text-[11px] py-1.5 text-right font-semibold text-emerald-600 tabular-nums">
+                                                <div className="flex flex-col items-end">
+                                                  <span>{formatCurrency(s.sales)}</span>
+                                                  <span className="text-[9px] text-slate-400 font-normal">{stateShare}% of region</span>
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="text-[11px] py-1.5 text-right font-semibold text-rose-500 tabular-nums">
+                                                <div className="flex flex-col items-end">
+                                                  <span>{formatCurrency(s.outstanding || 0)}</span>
+                                                  {s.returns > 0 && (
+                                                    <span className="text-[9px] text-amber-500 font-normal">Returns: {formatCurrency(s.returns)}</span>
+                                                  )}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="text-[11px] py-1.5 text-right truncate max-w-[140px]" title={s.topCustomer?.name}>
+                                                {s.topCustomer ? (
+                                                  <div className="flex flex-col items-end">
+                                                    <span 
+                                                      className="text-indigo-600 hover:underline cursor-pointer font-medium text-right line-clamp-1"
+                                                      onClick={(e) => { e.stopPropagation(); setDrillDown({ type: 'customer', name: s.topCustomer.name }); }}
+                                                    >
+                                                      {s.topCustomer.name}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-400 font-normal">{formatCurrency(s.topCustomer.sales)}</span>
+                                                  </div>
+                                                ) : '-'}
+                                              </TableCell>
+                                              <TableCell className="text-[11px] py-1.5 text-right truncate max-w-[140px]" title={s.topProduct?.name}>
+                                                {s.topProduct ? (
+                                                  <div className="flex flex-col items-end">
+                                                    <span 
+                                                      className="text-indigo-600 hover:underline cursor-pointer font-medium text-right line-clamp-1"
+                                                      onClick={(e) => { e.stopPropagation(); setDrillDown({ type: 'product', name: s.topProduct.name }); }}
+                                                    >
+                                                      {s.topProduct.name}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-400 font-normal">{formatCurrency(s.topProduct.sales)}</span>
+                                                  </div>
+                                                ) : '-'}
+                                              </TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
+                                        {(!r.states || r.states.length === 0) && (
+                                          <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-4 text-[10px] text-slate-400">No states data found.</TableCell>
+                                          </TableRow>
+                                        )}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                    {(!data.salesByRegion || data.salesByRegion.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center text-slate-400 text-sm">No regional data found.</TableCell>
+                      </TableRow>
+                    )}
                  </TableBody>
                </Table>
               </div>
@@ -536,8 +765,8 @@ export default function SalesDashboard() {
                  </TableHeader>
                  <TableBody>
                     {(data.churnedCustomers || []).map((c: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-xs font-medium text-slate-700 dark:text-slate-200">{c.name}</TableCell>
+                      <TableRow key={i} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50" onClick={() => setDrillDown({ type: 'customer', name: c.name })}>
+                        <TableCell className="text-xs font-medium text-indigo-600 hover:underline">{c.name}</TableCell>
                         <TableCell className="text-right text-xs text-rose-600 font-semibold">{new Date(c.lastTxDate).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right text-xs tabular-nums">{formatCurrency(c.value)}</TableCell>
                      </TableRow>
@@ -650,8 +879,28 @@ export default function SalesDashboard() {
                         </div>
                       </TableCell>
                       <TableCell className="text-xs font-mono text-slate-400">{tx.id}</TableCell>
-                      <TableCell className="text-xs font-medium text-indigo-600 truncate max-w-[150px]">{tx.customer}</TableCell>
-                      <TableCell className="text-xs text-slate-600 truncate max-w-[150px]">{tx.product}</TableCell>
+                      <TableCell 
+                        className="text-xs font-medium text-indigo-600 hover:underline cursor-pointer truncate max-w-[150px]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (tx.customer && tx.customer !== 'Multiple Items' && tx.customer !== 'None' && tx.customer !== 'Cash') {
+                            setDrillDown({ type: 'customer', name: tx.customer });
+                          }
+                        }}
+                      >
+                        {tx.customer}
+                      </TableCell>
+                      <TableCell 
+                        className={`text-xs truncate max-w-[150px] ${tx.product && tx.product !== 'Multiple Items' && tx.product !== 'None' ? 'text-indigo-600 hover:underline cursor-pointer font-medium' : 'text-slate-600'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (tx.product && tx.product !== 'Multiple Items' && tx.product !== 'None') {
+                            setDrillDown({ type: 'product', name: tx.product });
+                          }
+                        }}
+                      >
+                        {tx.product}
+                      </TableCell>
                       <TableCell className="text-xs text-right tabular-nums">{tx.qty > 0 ? tx.qty : '—'}</TableCell>
                       <TableCell className="text-xs text-right font-bold text-slate-700 dark:text-slate-200 tabular-nums pr-6">{formatCurrency(tx.amount)}</TableCell>
                     </TableRow>
@@ -665,7 +914,16 @@ export default function SalesDashboard() {
                               <tbody>
                                 {(tx.items || []).map((item: any, idx: number) => (
                                   <tr key={idx} className="border-b border-slate-100 dark:border-slate-800">
-                                    <td className="py-1.5">{item.product}</td>
+                                    <td 
+                                      className={`py-1.5 ${item.product && item.product !== 'Unknown' ? 'text-indigo-600 hover:underline cursor-pointer font-medium' : 'text-slate-700 dark:text-slate-300'}`}
+                                      onClick={() => {
+                                        if (item.product && item.product !== 'Unknown') {
+                                          setDrillDown({ type: 'product', name: item.product });
+                                        }
+                                      }}
+                                    >
+                                      {item.product}
+                                    </td>
                                     <td className="text-right py-1.5 text-slate-600">{item.qty > 0 ? item.qty : '—'}</td>
                                     <td className="text-right py-1.5 text-slate-600">{item.rate > 0 ? formatCurrency(item.rate) : '—'}</td>
                                     <td className="text-right py-1.5 font-medium">{formatCurrency(item.amount)}</td>
@@ -1024,6 +1282,429 @@ export default function SalesDashboard() {
                 )}
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KPI DETAIL MODAL */}
+      {selectedKpi && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedKpi(null)} />
+          <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-background shadow-2xl rounded-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b px-6 py-4 bg-slate-50 dark:bg-slate-900">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                  {selectedKpi === 'gross' && <><DollarSign className="w-5 h-5 text-blue-600" /> Gross Revenue Breakdown</>}
+                  {selectedKpi === 'net' && <><TrendingUp className="w-5 h-5 text-emerald-600" /> Net Sales Breakdown</>}
+                  {selectedKpi === 'returns' && <><TrendingDown className="w-5 h-5 text-rose-600" /> Returns (Credit Notes) Breakdown</>}
+                  {selectedKpi === 'pending' && <><Package className="w-5 h-5 text-amber-600" /> Pending Orders Breakdown</>}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {selectedKpi === 'gross' && "All completed sales vouchers (excluding returns/orders)"}
+                  {selectedKpi === 'net' && "Comparison of sales against return credit notes"}
+                  {selectedKpi === 'returns' && "All credit notes issued for sales returns and adjustments"}
+                  {selectedKpi === 'pending' && "All outstanding, unfulfilled sales orders in the pipeline"}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedKpi(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Filter / Search Bar */}
+            <div className="px-6 py-3 border-b flex items-center justify-between gap-4 bg-white dark:bg-slate-900">
+              <div className="relative w-full max-w-xs">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search by customer, voucher, or product..." 
+                  className="pl-9 pr-4 py-1.5 border rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                  value={kpiSearchQuery}
+                  onChange={(e) => { setKpiSearchQuery(e.target.value); setKpiPage(1); }}
+                />
+              </div>
+              <div className="text-xs text-slate-500 font-semibold">
+                Total Amount: <span className="text-sm font-bold text-slate-800 dark:text-white">
+                  {selectedKpi === 'gross' && formatCurrency(kpis.grossSales.value)}
+                  {selectedKpi === 'net' && formatCurrency(kpis.netSales.value)}
+                  {selectedKpi === 'returns' && formatCurrency(kpis.salesReturns.value)}
+                  {selectedKpi === 'pending' && formatCurrency(kpis.pendingOrders.value)}
+                </span>
+              </div>
+            </div>
+
+            {/* Content Table */}
+            <div className="flex-1 overflow-y-auto p-6 min-h-[300px]">
+              {(() => {
+                let txList: any[] = [];
+                if (selectedKpi === 'gross') {
+                  txList = (data.detailedTransactions || []).filter((t: any) => t.status === 'Completed');
+                } else if (selectedKpi === 'net') {
+                  txList = data.detailedTransactions || [];
+                } else if (selectedKpi === 'returns') {
+                  txList = (data.detailedTransactions || []).filter((t: any) => t.status === 'Returned');
+                } else if (selectedKpi === 'pending') {
+                  txList = data.pendingOrdersList || [];
+                }
+
+                // Calculate base totals BEFORE search filter
+                const baseSum = txList.reduce((acc, t) => acc + (t.amount || 0), 0);
+                const baseCount = txList.length;
+                const baseAvg = baseCount > 0 ? baseSum / baseCount : 0;
+                
+                const customerMap: Record<string, number> = {};
+                txList.forEach(t => {
+                  if (t.customer) customerMap[t.customer] = (customerMap[t.customer] || 0) + (t.amount || 0);
+                });
+                let topCustomer = "N/A";
+                let topCustomerVal = 0;
+                Object.entries(customerMap).forEach(([k, v]) => {
+                  if (v > topCustomerVal) {
+                    topCustomer = k;
+                    topCustomerVal = v;
+                  }
+                });
+
+                if (kpiSearchQuery) {
+                  const q = kpiSearchQuery.toLowerCase();
+                  txList = txList.filter((t: any) => 
+                    t.id?.toLowerCase().includes(q) || 
+                    t.customer?.toLowerCase().includes(q) || 
+                    t.product?.toLowerCase().includes(q)
+                  );
+                }
+
+                // 1. Voucher Type Breakdown
+                const typeMap: Record<string, number> = {};
+                txList.forEach(t => {
+                  const tName = t.type || (selectedKpi === 'pending' ? "Sales Order" : "Other");
+                  typeMap[tName] = (typeMap[tName] || 0) + (t.amount || 0);
+                });
+                const sortedTypes = Object.entries(typeMap)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 4);
+
+                // 2. Top Products Breakdown
+                const productMap: Record<string, { amount: number, qty: number }> = {};
+                txList.forEach(t => {
+                  if (t.items && t.items.length > 0) {
+                    t.items.forEach((item: any) => {
+                      if (item.product) {
+                        if (!productMap[item.product]) productMap[item.product] = { amount: 0, qty: 0 };
+                        productMap[item.product].amount += (item.amount || 0);
+                        productMap[item.product].qty += (item.qty || 0);
+                      }
+                    });
+                  } else if (t.product && t.product !== 'Multiple Items' && t.product !== 'None') {
+                    if (!productMap[t.product]) productMap[t.product] = { amount: 0, qty: 0 };
+                    productMap[t.product].amount += (t.amount || 0);
+                    productMap[t.product].qty += (t.qty || 0);
+                  }
+                });
+                const sortedProducts = Object.entries(productMap)
+                  .sort((a, b) => b[1].amount - a[1].amount)
+                  .slice(0, 4);
+
+                // 3. Top Customers Breakdown
+                const sortedCustomers = Object.entries(customerMap)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 4);
+
+                const currentSum = txList.reduce((acc, t) => acc + (t.amount || 0), 0);
+
+                const kpiRowsPerPage = 8;
+                const totalKpiPages = Math.ceil(txList.length / kpiRowsPerPage);
+                const paginatedList = txList.slice((kpiPage - 1) * kpiRowsPerPage, kpiPage * kpiRowsPerPage);
+
+                return (
+                  <div className="space-y-6">
+                    {/* KPI-specific Mini-Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
+                      <div className="bg-slate-50 dark:bg-slate-905/30 p-4 rounded-xl border shadow-sm flex flex-col justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Total Selected Value</span>
+                        <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{formatCurrency(currentSum)}</span>
+                        {kpiSearchQuery && (
+                          <span className="text-[9px] text-slate-400 mt-1">out of {formatCurrency(baseSum)}</span>
+                        )}
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-905/30 p-4 rounded-xl border shadow-sm flex flex-col justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Voucher Count</span>
+                        <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{txList.length}</span>
+                        {kpiSearchQuery && (
+                          <span className="text-[9px] text-slate-400 mt-1">out of {baseCount} total</span>
+                        )}
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-905/30 p-4 rounded-xl border shadow-sm flex flex-col justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Average Invoice</span>
+                        <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{formatCurrency(baseAvg)}</span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-905/30 p-4 rounded-xl border shadow-sm flex flex-col justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 font-sans">Top Customer</span>
+                        <span 
+                          className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer truncate mt-1" 
+                          title={topCustomer}
+                          onClick={() => {
+                            if (topCustomer !== "N/A" && topCustomer !== "Cash") {
+                              setDrillDown({ type: 'customer', name: topCustomer });
+                              setSelectedKpi(null);
+                            }
+                          }}
+                        >
+                          {topCustomer.length > 22 ? topCustomer.substring(0, 20) + '…' : topCustomer}
+                        </span>
+                        {topCustomerVal > 0 && (
+                          <span className="text-[9px] text-slate-400 mt-1">{((topCustomerVal / (baseSum || 1)) * 100).toFixed(0)}% contribution</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* TWO COLUMN CONTENT LAYOUT */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left Column: Categorized Breakdowns */}
+                      <div className="space-y-4">
+                        {/* 1. Voucher Type Breakdown */}
+                        <div className="bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Voucher Types</h4>
+                          <div className="space-y-2">
+                            {sortedTypes.map(([type, amount], idx) => {
+                              const pct = ((amount / (baseSum || 1)) * 100).toFixed(1);
+                              return (
+                                <div key={idx} className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold text-slate-600 truncate max-w-[130px]" title={type}>{type}</span>
+                                  <div className="text-right">
+                                    <span className="font-bold text-slate-800 dark:text-white">{formatCurrency(amount)}</span>
+                                    <span className="text-[10px] text-slate-400 ml-1">({pct}%)</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {sortedTypes.length === 0 && (
+                              <div className="text-slate-400 text-xs italic">No type data</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 2. Top Products Breakdown */}
+                        <div className="bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Top Products in list</h4>
+                          <div className="space-y-3">
+                            {sortedProducts.map(([name, item], idx) => (
+                              <div key={idx} className="text-xs border-b border-slate-200/50 dark:border-slate-800/50 pb-2 last:border-0 last:pb-0">
+                                <div className="flex justify-between items-center mb-0.5">
+                                  <span 
+                                    className="font-bold text-indigo-600 hover:underline cursor-pointer truncate max-w-[150px]" 
+                                    title={name}
+                                    onClick={() => {
+                                      setDrillDown({ type: 'product', name });
+                                      setSelectedKpi(null);
+                                    }}
+                                  >
+                                    {name}
+                                  </span>
+                                  <span className="font-extrabold text-slate-800 dark:text-white">{formatCurrency(item.amount)}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  Qty: {item.qty > 0 ? `${item.qty.toFixed(1)} units` : '—'}
+                                </div>
+                              </div>
+                            ))}
+                            {sortedProducts.length === 0 && (
+                              <div className="text-slate-400 text-xs italic">No product data</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. Top Customers Breakdown */}
+                        <div className="bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Top Customer Contributors</h4>
+                          <div className="space-y-2">
+                            {sortedCustomers.map(([name, amount], idx) => {
+                              const pct = ((amount / (baseSum || 1)) * 100).toFixed(0);
+                              return (
+                                <div key={idx} className="flex justify-between items-center text-xs">
+                                  <span 
+                                    className="font-bold text-indigo-600 hover:underline cursor-pointer truncate max-w-[150px]"
+                                    title={name}
+                                    onClick={() => {
+                                      setDrillDown({ type: 'customer', name });
+                                      setSelectedKpi(null);
+                                    }}
+                                  >
+                                    {name}
+                                  </span>
+                                  <div className="text-right">
+                                    <span className="font-extrabold text-slate-800 dark:text-white">{formatCurrency(amount)}</span>
+                                    <span className="text-[10px] text-slate-400 ml-1">({pct}%)</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {sortedCustomers.length === 0 && (
+                              <div className="text-slate-400 text-xs italic">No customer data</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column: searchable, paginated Table of transactions */}
+                      <div className="lg:col-span-2 space-y-4">
+                        <div className="rounded-xl border overflow-hidden shadow-sm bg-white dark:bg-slate-950">
+                          <Table>
+                            <TableHeader className="bg-slate-50 dark:bg-slate-900">
+                               <TableRow>
+                                 <TableHead className="text-xs font-semibold whitespace-nowrap pl-6">Date</TableHead>
+                                 <TableHead className="text-xs font-semibold">Voucher No</TableHead>
+                                 <TableHead className="text-xs font-semibold">Customer</TableHead>
+                                 <TableHead className="text-xs font-semibold">Product Description</TableHead>
+                                 <TableHead className="text-xs font-semibold text-right pr-6">Amount</TableHead>
+                               </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {paginatedList.map((tx: any, idx: number) => {
+                                const isRet = tx.status === 'Returned';
+                                return (
+                                  <React.Fragment key={idx}>
+                                    <TableRow 
+                                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer"
+                                      onClick={() => setKpiExpandedTxId(kpiExpandedTxId === tx.id ? null : tx.id)}
+                                    >
+                                      <TableCell className="text-xs whitespace-nowrap pl-6 text-slate-500">
+                                        <div className="flex items-center gap-1.5">
+                                          {kpiExpandedTxId === tx.id ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                                          {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-xs font-mono text-slate-400">{tx.id}</TableCell>
+                                      <TableCell 
+                                        className="text-xs font-medium text-indigo-600 hover:underline cursor-pointer truncate max-w-[200px]"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (tx.customer && tx.customer !== 'Multiple Items' && tx.customer !== 'None' && tx.customer !== 'Cash') {
+                                            setDrillDown({ type: 'customer', name: tx.customer });
+                                            setSelectedKpi(null);
+                                          }
+                                        }}
+                                      >
+                                        {tx.customer}
+                                      </TableCell>
+                                      <TableCell 
+                                        className={`text-xs truncate max-w-[200px] ${tx.product && tx.product !== 'Multiple Items' && tx.product !== 'None' ? 'text-indigo-600 hover:underline cursor-pointer font-medium' : 'text-slate-600'}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (tx.product && tx.product !== 'Multiple Items' && tx.product !== 'None') {
+                                            setDrillDown({ type: 'product', name: tx.product });
+                                            setSelectedKpi(null);
+                                          }
+                                        }}
+                                      >
+                                        {tx.product}
+                                      </TableCell>
+                                      <TableCell className={`text-xs text-right font-bold pr-6 tabular-nums ${isRet ? 'text-rose-600' : 'text-slate-700 dark:text-slate-200'}`}>
+                                        {isRet ? `-${formatCurrency(tx.amount)}` : formatCurrency(tx.amount)}
+                                      </TableCell>
+                                    </TableRow>
+                                    
+                                    {kpiExpandedTxId === tx.id && (
+                                      <TableRow className="bg-slate-50/50 dark:bg-slate-900/30">
+                                        <TableCell colSpan={5} className="p-0">
+                                          <div className="p-4 border-b pl-10 pr-10">
+                                            <h4 className="text-xs font-semibold mb-2 flex items-center gap-1"><Receipt className="w-3.5 h-3.5 text-indigo-500" /> Invoice Line Item Details</h4>
+                                            <table className="w-full text-xs">
+                                              <thead>
+                                                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500">
+                                                  <th className="text-left py-1.5 font-medium">Item Name</th>
+                                                  <th className="text-right py-1.5 font-medium">Qty</th>
+                                                  <th className="text-right py-1.5 font-medium">Rate</th>
+                                                  <th className="text-right py-1.5 font-medium">Amount</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {(tx.items || []).map((item: any, itemIdx: number) => (
+                                                  <tr key={itemIdx} className="border-b border-slate-100 dark:border-slate-900">
+                                                    <td 
+                                                      className={`py-1.5 ${item.product && item.product !== 'Unknown' ? 'text-indigo-600 hover:underline cursor-pointer font-medium' : 'text-slate-700 dark:text-slate-300'}`}
+                                                      onClick={() => {
+                                                        if (item.product && item.product !== 'Unknown') {
+                                                          setDrillDown({ type: 'product', name: item.product });
+                                                          setSelectedKpi(null);
+                                                        }
+                                                      }}
+                                                    >
+                                                      {item.product}
+                                                    </td>
+                                                    <td className="text-right py-1.5 text-slate-500">{item.qty || '—'}</td>
+                                                    <td className="text-right py-1.5 text-slate-500">{item.rate ? formatCurrency(item.rate) : '—'}</td>
+                                                    <td className="text-right py-1.5 font-semibold text-slate-800 dark:text-slate-200">{formatCurrency(item.amount)}</td>
+                                                  </tr>
+                                                ))}
+                                                {(tx.ledgers || []).map((l: any, ledgerIdx: number) => (
+                                                  <tr key={`ledger-${ledgerIdx}`}>
+                                                    <td colSpan={3} className="text-right py-1.5 text-slate-400 italic">{l.name}</td>
+                                                    <td className="text-right py-1.5 text-slate-400">{formatCurrency(l.amount)}</td>
+                                                  </tr>
+                                                ))}
+                                                <tr>
+                                                  <td colSpan={3} className="text-right py-2 font-bold text-slate-600 dark:text-slate-400">Grand Total</td>
+                                                  <td className="text-right py-2 font-black text-slate-900 dark:text-white">{formatCurrency(tx.amount)}</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                              {txList.length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="h-32 text-center text-slate-400 text-sm">
+                                    No records found matching the search filter.
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* Modal Pagination */}
+                        {totalKpiPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="text-xs text-slate-500">
+                              Showing {((kpiPage - 1) * kpiRowsPerPage) + 1} to {Math.min(kpiPage * kpiRowsPerPage, txList.length)} of {txList.length} vouchers
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => setKpiPage(p => Math.max(1, p - 1))}
+                                disabled={kpiPage === 1}
+                                className="p-1 rounded-md border disabled:opacity-50 hover:bg-slate-100"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </button>
+                              <span className="text-xs">Page {kpiPage} of {totalKpiPages}</span>
+                              <button 
+                                onClick={() => setKpiPage(p => Math.min(totalKpiPages, p + 1))}
+                                disabled={kpiPage === totalKpiPages}
+                                className="p-1 rounded-md border disabled:opacity-50 hover:bg-slate-100"
+                              >
+                                <ChevronRightIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

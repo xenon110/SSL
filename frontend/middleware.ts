@@ -25,10 +25,16 @@ export function middleware(request: NextRequest) {
   // If user is authenticated and trying to access the login page
   if (authToken && pathname === '/login') {
     const dashboardUrl = new URL('/dashboard', request.url);
-    return NextResponse.redirect(dashboardUrl);
+    const response = NextResponse.redirect(dashboardUrl);
+    response.cookies.set('active-company', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)', { path: '/', maxAge: 86400 });
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (authToken && request.cookies.get('active-company')?.value !== 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)') {
+    response.cookies.set('active-company', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)', { path: '/', maxAge: 86400 });
+  }
+  return response;
 }
 
 export const config = {

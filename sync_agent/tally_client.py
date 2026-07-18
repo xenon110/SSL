@@ -51,7 +51,7 @@ class TallyClient:
         Fetch all Ledgers using a custom TDL collection.
         This method reliably returns all ledger masters.
         """
-        xml_request = """
+        xml_request = f"""
         <ENVELOPE>
             <HEADER>
                 <VERSION>1</VERSION>
@@ -63,6 +63,7 @@ class TallyClient:
                 <DESC>
                     <STATICVARIABLES>
                         <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                        {f'<SVCURRENTCOMPANY>{self.company_name}</SVCURRENTCOMPANY>' if self.company_name else ''}
                     </STATICVARIABLES>
                     <TDL>
                         <TDLMESSAGE>
@@ -84,10 +85,10 @@ class TallyClient:
         This reliably returns ALL vouchers in the date range.
         """
         if not from_date:
-            from_date = "20250401"  # Start of financial year
+            from_date = "20000401"  # Very early date to catch all history
         if not to_date:
-            to_date = "20260331"
-            
+            to_date = "20990331"    # Far future date
+
         xml_request = f"""
         <ENVELOPE>
             <HEADER>
@@ -100,6 +101,7 @@ class TallyClient:
                 <DESC>
                     <STATICVARIABLES>
                         <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                        {f'<SVCURRENTCOMPANY>{self.company_name}</SVCURRENTCOMPANY>' if self.company_name else ''}
                         <SVFROMDATE>{from_date}</SVFROMDATE>
                         <SVTODATE>{to_date}</SVTODATE>
                     </STATICVARIABLES>
@@ -111,6 +113,8 @@ class TallyClient:
                                 <FETCH>ALLLEDGERENTRIES.LIST.LEDGERNAME, ALLLEDGERENTRIES.LIST.AMOUNT, ALLLEDGERENTRIES.LIST.ISDEEMEDPOSITIVE</FETCH>
                                 <FETCH>INVENTORYENTRIES.LIST.STOCKITEMNAME, INVENTORYENTRIES.LIST.BILLEDQTY, INVENTORYENTRIES.LIST.RATE, INVENTORYENTRIES.LIST.AMOUNT, INVENTORYENTRIES.LIST.ACTUALQTY</FETCH>
                                 <FETCH>ALLINVENTORYENTRIES.LIST.STOCKITEMNAME, ALLINVENTORYENTRIES.LIST.BILLEDQTY, ALLINVENTORYENTRIES.LIST.RATE, ALLINVENTORYENTRIES.LIST.AMOUNT, ALLINVENTORYENTRIES.LIST.ACTUALQTY</FETCH>
+                                <FETCH>INVENTORYENTRIESIN.LIST.STOCKITEMNAME, INVENTORYENTRIESIN.LIST.BILLEDQTY, INVENTORYENTRIESIN.LIST.RATE, INVENTORYENTRIESIN.LIST.AMOUNT, INVENTORYENTRIESIN.LIST.ACTUALQTY</FETCH>
+                                <FETCH>INVENTORYENTRIESOUT.LIST.STOCKITEMNAME, INVENTORYENTRIESOUT.LIST.BILLEDQTY, INVENTORYENTRIESOUT.LIST.RATE, INVENTORYENTRIESOUT.LIST.AMOUNT, INVENTORYENTRIESOUT.LIST.ACTUALQTY</FETCH>
                                 <FETCH>LEDGERENTRIES.LIST.LEDGERNAME, LEDGERENTRIES.LIST.AMOUNT, LEDGERENTRIES.LIST.ISDEEMEDPOSITIVE</FETCH>
                             </COLLECTION>
                         </TDLMESSAGE>
@@ -188,6 +192,7 @@ class TallyClient:
                         <REPORTNAME>{report_name}</REPORTNAME>
                         <STATICVARIABLES>
                             <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                            {f'<SVCURRENTCOMPANY>{self.company_name}</SVCURRENTCOMPANY>' if self.company_name else ''}
                         </STATICVARIABLES>
                     </REQUESTDESC>
                 </EXPORTDATA>
@@ -217,7 +222,7 @@ class TallyClient:
                         <TDLMESSAGE>
                             <COLLECTION NAME="IncrementalMasters" ISINITIALIZE="Yes">
                                 <TYPE>{master_type}</TYPE>
-                                <FETCH>NAME, PARENT, GUID, OPENINGBALANCE, CLOSINGBALANCE, ALTERID, CREDITLIMIT, BILLCREDITPERIOD, LEDGERPHONE, EMAIL</FETCH>
+                                <FETCH>NAME, PARENT, GUID, OPENINGBALANCE, CLOSINGBALANCE, ALTERID, CREDITLIMIT, BILLCREDITPERIOD, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, LEDSTATENAME, PARTYGSTIN, ISREVENUE, ISDEEMEDPOSITIVE</FETCH>
                                 <FILTER>AltIdFilter</FILTER>
                             </COLLECTION>
                             <SYSTEM TYPE="Formulae" NAME="AltIdFilter">$$NumValue:$ALTERID &gt; {last_alter_id}</SYSTEM>
@@ -300,7 +305,7 @@ class TallyClient:
             print(f"Failed to parse ledgers XML: {e}")
         return ledgers
 
-    def parse_outstandings(self, xml_response):
+    def parse_outstandings(self, xml_response, report_type="Receivables"):
         """Parse outstandings report data from Tally XML response."""
         bills = []
         if not xml_response: return bills
@@ -332,12 +337,16 @@ class TallyClient:
                             due_date = children[j].text or due_date
                     
                     pending_amount = float(re.sub(r'[^0-9.\-]', '', pending_amount_str.split()[0] if pending_amount_str.strip() else "0") or "0")
-                    
+                    if report_type == "Receivables":
+                        # Tally exports receivables (Debits) as negative. Standardize to positive.
+                        pending_amount = -pending_amount
+
                     # Determine Bill Type based on heuristics
                     bill_type = "new_ref"
                     if not bill_ref or bill_ref.lower().strip() == "on account":
                         bill_type = "on_account"
-                    # We will refine "advance" via the group checking in main.py if signs are inverted.
+                    elif pending_amount < 0:
+                        bill_type = "advance"
                         
                     if bill_date and party:
                         bills.append({
@@ -376,6 +385,12 @@ class TallyClient:
                 rate_str = item_node.findtext("OPENINGRATE") or "0"
                 rate_clean = re.sub(r'[^0-9.\-]', '', rate_str.split('/')[0] if '/' in rate_str else rate_str)
                 
+                closing_qty_str = item_node.findtext("CLOSINGBALANCE") or "0"
+                closing_qty_clean = re.sub(r'[^0-9.\-]', '', closing_qty_str.split()[0] if closing_qty_str.strip() else "0")
+                
+                closing_val_str = item_node.findtext("CLOSINGVALUE") or "0"
+                closing_val_clean = re.sub(r'[^0-9.\-]', '', closing_val_str.split()[0] if closing_val_str.strip() else "0")
+                
                 stock_items.append({
                     "name": name,
                     "parent_group": item_node.findtext("PARENT") or item_node.findtext("PARENTGROUP"),
@@ -384,6 +399,8 @@ class TallyClient:
                     "opening_balance_qty": float(qty_clean) if qty_clean else 0.0,
                     "opening_balance_value": float(val_clean) if val_clean else 0.0,
                     "opening_rate": float(rate_clean) if rate_clean else 0.0,
+                    "closing_balance_qty": float(closing_qty_clean) if closing_qty_clean else 0.0,
+                    "closing_balance_value": float(closing_val_clean) if closing_val_clean else 0.0,
                 })
         except Exception as e:
             print(f"Failed to parse stock items XML: {e}")
@@ -418,22 +435,28 @@ class TallyClient:
                 narration = voucher_node.findtext("NARRATION")
                 reference = voucher_node.findtext("REFERENCE")
                 
-                is_cancelled = voucher_node.findtext("ISCANCELLED") == "Yes"
-                is_deleted = voucher_node.findtext("ISDELETED") == "Yes"
-                is_optional = voucher_node.findtext("ISOPTIONAL") == "Yes"
-                alter_id = voucher_node.get("ALTERID") or "0"
+                is_cancelled = (voucher_node.findtext("ISCANCELLED") or "").strip().lower() == "yes"
+                is_deleted = (voucher_node.findtext("ISDELETED") or "").strip().lower() == "yes"
+                is_optional = (voucher_node.findtext("ISOPTIONAL") or "").strip().lower() == "yes"
+                alter_id = voucher_node.findtext("ALTERID") or voucher_node.get("ALTERID") or "0"
                 
                 entered_by = voucher_node.findtext("ENTEREDBY") or ""
                 altered_by = voucher_node.findtext("ALTEREDBY") or ""
                 
                 # Extract Ledger Entries
                 ledgers = []
-                total_amount = 0.0
                 
-                ledger_lists = (
-                    voucher_node.findall('.//ALLLEDGERENTRIES.LIST') + 
-                    voucher_node.findall('.//LEDGERENTRIES.LIST')
-                )
+                # Check top-level AMOUNT first
+                top_amt_str = voucher_node.findtext("AMOUNT")
+                if top_amt_str:
+                    amt_clean = re.sub(r'[^0-9.\-]', '', top_amt_str.split('/')[0] if '/' in top_amt_str else top_amt_str)
+                    total_amount = abs(float(amt_clean)) if amt_clean else 0.0
+                else:
+                    total_amount = 0.0
+                
+                ledger_lists = voucher_node.findall('.//ALLLEDGERENTRIES.LIST')
+                if not ledger_lists:
+                    ledger_lists = voucher_node.findall('.//LEDGERENTRIES.LIST')
                 
                 for idx, ledger_node_entry in enumerate(ledger_lists):
                     ledger_name = ledger_node_entry.findtext("LEDGERNAME") or ""
@@ -446,7 +469,7 @@ class TallyClient:
                     is_debit = amt < 0
                     abs_amt = abs(amt)
                     
-                    if idx == 0:
+                    if idx == 0 and total_amount == 0.0:
                         total_amount = abs_amt
                     
                     ledgers.append({
@@ -457,10 +480,14 @@ class TallyClient:
                     
                 # Extract Inventory Entries
                 inventory = []
-                inv_lists = (
-                    voucher_node.findall('.//ALLINVENTORYENTRIES.LIST') + 
-                    voucher_node.findall('.//INVENTORYENTRIES.LIST')
-                )
+                inv_lists = voucher_node.findall('.//ALLINVENTORYENTRIES.LIST')
+                if not inv_lists:
+                    inv_lists = voucher_node.findall('.//INVENTORYENTRIES.LIST')
+                if not inv_lists:
+                    inv_lists = (
+                        voucher_node.findall('.//INVENTORYENTRIESIN.LIST') + 
+                        voucher_node.findall('.//INVENTORYENTRIESOUT.LIST')
+                    )
                 
                 for inv_node in inv_lists:
                     item_name = inv_node.findtext("STOCKITEMNAME")
@@ -481,6 +508,10 @@ class TallyClient:
                     inv_amt_str = inv_node.findtext("AMOUNT") or "0"
                     inv_amt_clean = re.sub(r'[^0-9.\-]', '', inv_amt_str.split('/')[0] if '/' in inv_amt_str else inv_amt_str)
                     inv_amt = abs(float(inv_amt_clean)) if inv_amt_clean else 0.0
+
+                    # CRITICAL FIX: If amount is 0 but qty and rate are present, calculate it
+                    if inv_amt == 0.0 and qty > 0 and rate > 0:
+                        inv_amt = qty * rate
                     
                     # Determine if inward (purchase) or outward (sale)
                     vtype_lower = voucher_type.lower()

@@ -61,7 +61,7 @@ export default function PortalLauncher() {
         <div className="flex-1 text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
           <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-tight">
             Welcome to,<br/>
-            <span className="text-emerald-400">BKM Prime</span>
+            <span className="text-emerald-400">Samridhi Prime</span>
           </h1>
           <p className="mt-6 text-lg text-slate-400 font-medium max-w-md">
             Select an application module to continue to your secure workspace.
@@ -79,7 +79,7 @@ export default function PortalLauncher() {
               <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500 mb-6">
                 <BarChart3 className="w-12 h-12 text-black" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">BKM Prime</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Samridhi Prime</h2>
               <p className="text-sm text-slate-400 mb-8">
                 Financial Intelligence, Stock Summary, and Data Analytics.
               </p>

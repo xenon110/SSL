@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 // Factor keys exactly as specified in the prompt
 const FACTORS = [
@@ -8,6 +9,18 @@ const FACTORS = [
   'K20', 'K21', 'K22', 'K23', 'K24', 'K25', 'K26', 'K27'
 ];
 
+const getEmptyPeriodStats = (days: number) => {
+  const stats: any = {};
+  FACTORS.forEach(k => stats[k] = 0);
+  return { stats, drivers: { topSalesProd: [], topSalesCust: [], topExpenses: [] }, days, trend: Array(days).fill(0) };
+};
+
+const getEmptyCompareState = (daysA: number, daysB: number) => {
+  const deltas: any = {};
+  FACTORS.forEach(k => deltas[k] = { abs: 0, perc: 0 });
+  return { periodA: getEmptyPeriodStats(daysA), periodB: getEmptyPeriodStats(daysB), deltas, insights: [] };
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,7 +28,6 @@ export async function GET(request: Request) {
     const aEnd = searchParams.get('aEnd');
     const bStart = searchParams.get('bStart');
     const bEnd = searchParams.get('bEnd');
-    const company = searchParams.get('company') || 'BKM INDUSTRIES LIMITED';
     
     if (!aStart || !aEnd || !bStart || !bEnd) {
       return NextResponse.json({ error: 'Missing period boundaries' }, { status: 400 });
@@ -29,23 +41,44 @@ export async function GET(request: Request) {
     const daysA = Math.max(1, Math.round((ts_aEnd - ts_aStart) / (1000 * 3600 * 24)) + 1);
     const daysB = Math.max(1, Math.round((ts_bEnd - ts_bStart) / (1000 * 3600 * 24)) + 1);
 
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+    
+    let companyId = null;
+    let decodedName = decodeURIComponent(activeCompany);
+    const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
+    if (comp) {
+      companyId = comp.id;
+    } else {
+      const { data: bkmComp } = await supabase.from('companies').select('id').eq('name', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)').single();
+      if (bkmComp) {
+        companyId = bkmComp.id;
+      } else {
+        return NextResponse.json(getEmptyCompareState(daysA, daysB));
+      }
+    }
+
     // 1. Fetch ledgers and groups to classify everything
     const [{ data: groups }, { data: ledgers }, { data: stockItems }] = await Promise.all([
       supabase.from('groups').select('name, parent'),
-      supabase.from('ledgers').select('*'),
-      supabase.from('stock_items').select('*')
+      supabase.from('ledgers').select('*').eq('company_id', companyId),
+      supabase.from('stock_items').select('*').eq('company_id', companyId)
     ]);
 
-    const groupMap = new Map((groups || []).map(g => [g.name, g.parent]));
-    const ledgerMap = new Map((ledgers || []).map(l => [l.name, l]));
+    const groupMap = new Map((groups || []).map(g => [g.name ? g.name.toLowerCase().trim() : '', g.parent ? g.parent.toLowerCase().trim() : '']));
+    const ledgerMap = new Map((ledgers || []).map(l => [l.name ? l.name.toLowerCase().trim() : '', l]));
 
     // Hierarchy resolver
     const resolveRoot = (groupName: string, targets: string[]) => {
-      let current = groupName;
+      let current = (groupName || '').trim();
       let depth = 0;
+      const targetLowers = targets.map(t => t.toLowerCase().trim());
       while (current && depth < 20) {
-        if (targets.includes(current)) return current;
-        current = groupMap.get(current) || '';
+        const curLower = current.toLowerCase();
+        if (targetLowers.includes(curLower)) {
+          return targets[targetLowers.indexOf(curLower)];
+        }
+        current = groupMap.get(curLower) || '';
         depth++;
       }
       return null;
@@ -58,6 +91,10 @@ export async function GET(request: Request) {
     const { data: vouchers, error } = await supabase
       .from('vouchers')
       .select('*, voucher_ledgers(*), voucher_inventory(*)')
+      .eq('company_id', companyId)
+      .eq('is_deleted', false)
+      .eq('is_cancelled', false)
+      .eq('is_optional', false)
       .gte('date', minStart)
       .lte('date', todayStr); // fetch up to today
 
@@ -67,7 +104,7 @@ export async function GET(request: Request) {
     const { data: outstandings } = await supabase
       .from('outstanding_bills')
       .select('*')
-      .eq('company_name', company);
+      .eq('company_name', decodedName);
 
     // Compute Engine
     const computePeriod = (start: number, end: number, days: number) => {
@@ -96,7 +133,7 @@ export async function GET(request: Request) {
           else if (type === 'Payment') stats.K17 += v.amount;
 
           v.voucher_ledgers?.forEach((vl: any) => {
-            const lInfo = ledgerMap.get(vl.ledger_name);
+            const lInfo = ledgerMap.get(vl.ledger_name ? vl.ledger_name.toLowerCase().trim() : '');
             if (!lInfo) return;
             const root = resolveRoot(lInfo.parent_group, [
               'Sales Accounts', 'Purchase Accounts', 'Direct Incomes', 

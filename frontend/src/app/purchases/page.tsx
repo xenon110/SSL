@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, TrendingDown, Users, Activity, AlertCircle, MapPin, X, ChevronRight, Package, IndianRupee, Calendar, ArrowUpRight, ArrowDownRight, Truck, Search, ArrowUpDown, Filter, ChevronLeft } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Users, Activity, AlertCircle, MapPin, X, ChevronRight, Package, IndianRupee, Calendar, ArrowUpRight, ArrowDownRight, Truck, Search, ArrowUpDown, Filter, ChevronLeft, Sparkles } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
@@ -17,7 +17,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default function PurchaseDashboard() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const currentMonth = d.getMonth();
+    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdjustedView, setIsAdjustedView] = useState(false);
@@ -51,6 +59,8 @@ export default function PurchaseDashboard() {
         if (!res.ok) throw new Error('Failed to fetch data');
         const apiData = await res.json();
         setData(apiData);
+
+        
       } catch (error) {
         console.error("Error fetching live data:", error);
       } finally {
@@ -221,6 +231,15 @@ export default function PurchaseDashboard() {
   const uniqueSuppliers = useMemo(() => Array.from(new Set((data?.detailedTransactions || []).map((t: any) => t.supplier).filter(Boolean))) as string[], [data]);
   const uniqueProducts = useMemo(() => Array.from(new Set((data?.detailedTransactions || []).map((t: any) => t.product).filter(Boolean))) as string[], [data]);
 
+  const predictionUrl = useMemo(() => {
+    let url = '/purchases/prediction';
+    const params = new URLSearchParams();
+    if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
+    if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+    if (params.toString()) url += '?' + params.toString();
+    return url;
+  }, [dateRange]);
+
   return (
     <div className="flex-1 space-y-6 pb-8 px-2 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
@@ -247,8 +266,20 @@ export default function PurchaseDashboard() {
             </button>
           </div>
         </div>
-        <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
-           <DateRangePicker onDateChange={setDateRange} />
+        <div className="flex items-center gap-3">
+          <a
+            href={predictionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-lg shadow-md hover:scale-102 active:scale-98 transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4 text-white animate-pulse" />
+            AI Future Prediction
+          </a>
+          
+          <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
+             <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+          </div>
         </div>
       </div>
 

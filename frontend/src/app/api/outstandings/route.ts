@@ -1,11 +1,36 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+
+const getEmptyOutstandingsState = () => ({
+  kpis: {
+    totalReceivables: 0,
+    totalPayables: 0,
+    overdueReceivables: 0,
+    overduePayables: 0,
+    netPosition: 0,
+    asOnDate: null
+  },
+  receivables: [],
+  payables: []
+});
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const companyName = searchParams.get('companyName') || 'BKM INDUSTRIES LIMITED';
     const groupFilter = searchParams.get('group'); // 'receivable' or 'payable'
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value;
+    const companyName = activeCompany ? decodeURIComponent(activeCompany) : searchParams.get('companyName') || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+
+    // Verify company exists
+    const { data: comp } = await supabase.from('companies').select('id').eq('name', companyName).single();
+    if (!comp) {
+      return NextResponse.json(getEmptyOutstandingsState());
+    }
 
     // 1. Fetch Outstanding Bills
     let query = supabase
@@ -13,26 +38,34 @@ export async function GET(request: Request) {
       .select('*')
       .eq('company_name', companyName);
       
+    if (endDate) query = query.lte('bill_date', endDate);
+      
     if (groupFilter) {
       query = query.eq('party_group', groupFilter);
     }
     
-    const { data: bills, error: billsError } = await query;
+    const { data: bills, error: billsError } = await fetchAllData(query);
     if (billsError) throw billsError;
 
     // 2. Fetch Ledgers to get credit limits, contact info, etc.
-    // In a real app we'd map company_id from companyName, but for now we'll lookup ledger by name
-    const partyNames = [...new Set(bills?.map(b => b.party_ledger) || [])];
     const { data: ledgers, error: ledgersError } = await supabase
       .from('ledgers')
-      .select('name, credit_limit, credit_days, phone, email, closing_balance');
+      .select('name, credit_limit, credit_days, phone, email, closing_balance, parent_group');
 
     const ledgerMap: Record<string, any> = {};
     if (ledgers) {
-      ledgers.forEach(l => {
+      (ledgers || []).forEach(l => {
         ledgerMap[l.name] = l;
       });
     }
+
+    const parseLocalDate = (dateStr: string) => {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      }
+      return new Date(dateStr);
+    };
 
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -51,7 +84,7 @@ export async function GET(request: Request) {
     // Helper to calculate ageing bucket
     const getAgeBucket = (dueDateStr: string | null) => {
       if (!dueDateStr) return 'Not Due';
-      const dueTime = new Date(dueDateStr).getTime();
+      const dueTime = parseLocalDate(dueDateStr).getTime();
       if (dueTime >= todayTime) return 'Not Due'; // Not overdue yet
       const diffDays = Math.floor((todayTime - dueTime) / (1000 * 60 * 60 * 24));
       
@@ -64,14 +97,17 @@ export async function GET(request: Request) {
     const partySummary: Record<string, any> = {};
 
     bills?.forEach(bill => {
-      const amt = Number(bill.pending_amount) || 0;
-      if (amt === 0) return;
+      const pendingVal = Number(bill.pending_amount) || 0;
+      if (pendingVal === 0) return;
+      
+      // Since database values are already normalized during sync, read directly
+      const amt = pendingVal;
       
       if (!asOnDate && bill.as_on_date) {
         asOnDate = bill.as_on_date;
       }
 
-      const isOverdue = bill.due_date && new Date(bill.due_date).getTime() < todayTime;
+      const isOverdue = bill.due_date && parseLocalDate(bill.due_date).getTime() < todayTime;
       const ageBucket = getAgeBucket(bill.due_date);
       
       const party = bill.party_ledger;
@@ -80,6 +116,7 @@ export async function GET(request: Request) {
         partySummary[party] = {
           name: party,
           group: bill.party_group,
+          parentGroup: ledInfo.parent_group || (bill.party_group === 'receivable' ? 'Sundry Debtors' : 'Sundry Creditors'),
           totalPending: 0,
           totalOverdue: 0,
           advances: 0,
@@ -120,16 +157,15 @@ export async function GET(request: Request) {
 
       ps.bills.push({
         ...bill,
+        pending_amount: amt, // store normalized amount in bills
         overdueDays: isOverdue ? Math.floor((todayTime - new Date(bill.due_date).getTime()) / (1000 * 60 * 60 * 24)) : 0
       });
       
       if (bill.party_group === 'receivable') {
-        if (amt > 0 && bill.bill_type !== 'advance') totalReceivables += amt;
-        else if (amt < 0 || bill.bill_type === 'advance') totalReceivables -= Math.abs(amt);
+        totalReceivables += amt;
         if (isOverdue && amt > 0) overdueReceivables += amt;
       } else {
-        if (amt > 0 && bill.bill_type !== 'advance') totalPayables += amt;
-        else if (amt < 0 || bill.bill_type === 'advance') totalPayables -= Math.abs(amt);
+        totalPayables += amt;
         if (isOverdue && amt > 0) overduePayables += amt;
       }
     });

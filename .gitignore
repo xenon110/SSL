@@ -19,4 +19,3 @@ Thumbs.db
 
 # Any raw data we might want to ignore
 *.xml
-*.json

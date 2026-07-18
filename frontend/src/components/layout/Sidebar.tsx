@@ -46,7 +46,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col overflow-y-auto px-3 py-4">
         <div className="mb-6 px-3">
           <h2 className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-1">
-            BKM<span className="text-indigo-600 font-bold">Prime</span>
+            Samridhi<span className="text-indigo-600 font-bold">Prime</span>
           </h2>
           <p className="text-xs text-muted-foreground mt-1">Financial Intelligence</p>
         </div>

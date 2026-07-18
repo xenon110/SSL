@@ -3,14 +3,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Banknote, ArrowDownRight, ArrowUpRight, Activity, Search, X, Users, Briefcase, HandCoins, ChevronRight, ChevronDown, ChevronUp, Receipt, ArrowUpDown, TrendingUp } from "lucide-react";
+import { Banknote, ArrowDownRight, ArrowUpRight, Activity, Search, X, Users, Briefcase, HandCoins, ChevronRight, ChevronDown, ChevronUp, Receipt, ArrowUpDown, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Cell, Legend, PieChart, Pie, LineChart, Line, ComposedChart } from 'recharts';
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function CashFlowDashboard() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const currentMonth = d.getMonth();
+    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [outstandings, setOutstandings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,14 +35,43 @@ export default function CashFlowDashboard() {
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: 'date' | 'amount'; direction: 'desc' | 'asc' }>({ key: 'date', direction: 'desc' });
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const triggerSync = async () => {
+    try {
+      setIsSyncing(true);
+      let syncUrl = '/api/sync';
+      const params = new URLSearchParams();
+      if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+      if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+      if (params.toString()) syncUrl += '?' + params.toString();
+      
+      await fetch(syncUrl, { method: 'POST' });
+      
+      // Reload data after sync
+      let dataUrl = '/api/cash-flow';
+      if (params.toString()) dataUrl += '?' + params.toString();
+      if (isAdjustedView) {
+        if (dataUrl.includes('?')) dataUrl += '&adjusted=true';
+        else dataUrl += '?adjusted=true';
+      }
+      const res = await fetch(dataUrl);
+      if (res.ok) setData(await res.json());
+    } catch (err) {
+      console.error("Live Sync failed", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   useEffect(() => {
     async function fetchLiveData() {
       try {
         setIsLoading(true);
         let url = '/api/cash-flow';
         const params = new URLSearchParams();
-        if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-        if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+        if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+        if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
         if (isAdjustedView) params.append('adjusted', 'true');
         if (params.toString()) url += '?' + params.toString();
         
@@ -41,6 +79,7 @@ export default function CashFlowDashboard() {
         if (!res.ok) throw new Error('Failed to fetch data');
         const apiData = await res.json();
         setData(apiData);
+
       } catch (error) {
         console.error("Error fetching live data:", error);
       } finally {
@@ -48,12 +87,18 @@ export default function CashFlowDashboard() {
       }
     }
     fetchLiveData();
-  }, [dateRange]);
+  }, [dateRange, isAdjustedView]);
 
   useEffect(() => {
     async function fetchOutstandings() {
       try {
-        const res = await fetch('/api/outstandings');
+        let url = '/api/outstandings';
+        const params = new URLSearchParams();
+        if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+        if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+        if (params.toString()) url += '?' + params.toString();
+        
+        const res = await fetch(url);
         const json = await res.json();
         setOutstandings(json);
       } catch (err) {
@@ -61,17 +106,13 @@ export default function CashFlowDashboard() {
       }
     }
     fetchOutstandings();
-  }, []);
+  }, [dateRange]);
 
   const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val || 0);
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
   const formatCompact = (val: number) => {
-    const v = val || 0;
-    if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`;
-    if (v >= 100000) return `₹${(v / 100000).toFixed(2)}L`;
-    if (v >= 1000) return `₹${(v / 1000).toFixed(2)}k`;
-    return `₹${v.toFixed(0)}`;
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
   };
 
   const kpis = data?.kpis;
@@ -80,8 +121,7 @@ export default function CashFlowDashboard() {
   const deepDiveTrend = useMemo(() => {
     if (!selectedLedger || !data?.detailedTransactions) return [];
     
-    const monthly: Record<string, { month: string, targetIn: number, targetOut: number, compareIn: number, compareOut: number }> = {};
-    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthly: Record<string, { name: string, targetIn: number, targetOut: number, compareIn: number, compareOut: number, sortKey: number }> = {};
     
     data.detailedTransactions.forEach((tx: any) => {
       const isTarget = tx.ledger === selectedLedger.name;
@@ -89,8 +129,11 @@ export default function CashFlowDashboard() {
       
       if (!isTarget && !isCompare) return;
 
-      const m = new Date(tx.date).toLocaleString('default', { month: 'short' });
-      if (!monthly[m]) monthly[m] = { month: m, targetIn: 0, targetOut: 0, compareIn: 0, compareOut: 0 };
+      const d = new Date(tx.date);
+      const m = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear().toString().substring(2);
+      const sortKey = d.getFullYear() * 100 + d.getMonth();
+      
+      if (!monthly[m]) monthly[m] = { name: m, targetIn: 0, targetOut: 0, compareIn: 0, compareOut: 0, sortKey };
 
       if (isTarget) {
         if (tx.type === 'INFLOW') monthly[m].targetIn += tx.amount;
@@ -102,7 +145,7 @@ export default function CashFlowDashboard() {
       }
     });
 
-    return Object.values(monthly).sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+    return Object.values(monthly).sort((a, b) => a.sortKey - b.sortKey);
   }, [selectedLedger, compareLedger, data]);
 
   const handleSort = (key: 'date' | 'amount') => {
@@ -177,11 +220,23 @@ export default function CashFlowDashboard() {
         p.bills?.forEach((b: any) => {
           if (!b.due_date) return;
           const due = new Date(b.due_date).getTime();
-          if (due < now.getTime()) return; // Past due, not "expected next 4 weeks" (it's overdue)
-          const diff = due - now.getTime();
-          const wk = Math.floor(diff / msPerWeek);
-          if (wk >= 0 && wk < 4) {
-            weeks[wk][type] += Math.abs(Number(b.pending_amount) || 0);
+          const amount = Math.abs(Number(b.pending_amount) || 0);
+          
+          if (due < now.getTime()) {
+            // Overdue bills: distribute realistically over 4 weeks based on collection velocity
+            weeks[0][type] += amount * 0.40;
+            weeks[1][type] += amount * 0.30;
+            weeks[2][type] += amount * 0.20;
+            weeks[3][type] += amount * 0.10;
+          } else {
+            const diff = due - now.getTime();
+            const wk = Math.floor(diff / msPerWeek);
+            if (wk >= 0 && wk < 4) {
+              weeks[wk][type] += amount;
+            } else if (wk >= 4) {
+              // Standard late collection logic
+              weeks[3][type] += amount;
+            }
           }
         });
       });
@@ -192,6 +247,15 @@ export default function CashFlowDashboard() {
 
     return weeks;
   }, [outstandings]);
+
+  const predictionUrl = useMemo(() => {
+    let url = '/cash-flow/prediction';
+    const params = new URLSearchParams();
+    if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+    if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+    if (params.toString()) url += '?' + params.toString();
+    return url;
+  }, [dateRange]);
 
   return (
     <div className="flex-1 space-y-6 pb-8 px-2 animate-in fade-in duration-700 relative">
@@ -219,8 +283,29 @@ export default function CashFlowDashboard() {
             </button>
           </div>
         </div>
-        <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
-           <DateRangePicker onDateChange={setDateRange} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={triggerSync}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin text-emerald-500" : ""}`} />
+            {isSyncing ? "Syncing Live..." : "Live Sync"}
+          </button>
+          
+          <a
+            href={predictionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-lg shadow-md hover:scale-102 active:scale-98 transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4 text-white animate-pulse" />
+            AI Future Prediction
+          </a>
+          
+          <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
+             <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+          </div>
         </div>
       </div>
 
@@ -361,36 +446,31 @@ export default function CashFlowDashboard() {
 
           </div>
 
-          {/* 30-Day Liquidity Forecast */}
-          {data.forecastData && data.forecastData.length > 0 && (
+          {/* Net Cash Position (Surplus / Deficit) Chart */}
+          {data.trendData && data.trendData.length > 0 && (
             <div className="grid gap-6">
               <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl flex flex-col lg:col-span-2">
                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
                   <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-white">
                     <TrendingUp className="h-5 w-5 text-indigo-500" />
-                    30-Day Liquidity Forecast
+                    Net Cash Position (Surplus / Deficit)
                   </CardTitle>
-                  <CardDescription className="text-slate-500">Projected cash balance based on pending accounts receivable & payable due dates</CardDescription>
+                  <CardDescription className="text-slate-500">Actual net cash flow (Inflows minus Outflows) synced from Tally for the selected date range</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[350px] p-0 relative">
+                <CardContent className="h-[350px] p-4 relative">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data.forecastData} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
+                    <BarChart data={data.trendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} dy={10} minTickGap={30} />
-                      <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => formatCompact(v)} dx={-10} />
-                      <RechartsTooltip formatter={(value) => formatCurrency(value as number)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                      <Legend verticalAlign="top" height={36} wrapperStyle={{ paddingTop: '10px' }} />
-                      
-                      <Area type="monotone" name="Projected Balance" dataKey="balance" fill="url(#colorBalance)" stroke="#8b5cf6" strokeWidth={3} />
-                      <Bar name="Expected Inflow" dataKey="incoming" fill="#10b981" barSize={10} radius={[4,4,0,0]} />
-                      <Bar name="Expected Outflow" dataKey="outgoing" fill="#ef4444" barSize={10} radius={[4,4,0,0]} />
-                    </ComposedChart>
+                      <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => formatCompact(v)} />
+                      <RechartsTooltip formatter={(value) => [formatCurrency(value as number), 'Net Flow']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                      <Legend verticalAlign="top" height={36} />
+                      <Bar name="Net Cash Movement" dataKey="netFlow" radius={[4,4,0,0]}>
+                        {data.trendData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.netFlow >= 0 ? '#10b981' : '#ef4444'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
@@ -421,7 +501,7 @@ export default function CashFlowDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="month" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} dy={10} />
                     <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} dx={-10} tickFormatter={(v) => formatCompact(v)} />
                     <RechartsTooltip formatter={(value: any) => formatCurrency(value)} />
                     <Legend />
@@ -721,7 +801,7 @@ export default function CashFlowDashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={deepDiveTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} dy={10} />
+                      <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} axisLine={false} dy={10} />
                       <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} dx={-10} tickFormatter={(v) => formatCompact(v)} />
                       <RechartsTooltip formatter={(value: any) => formatCurrency(value)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                       <Legend wrapperStyle={{ paddingTop: '20px' }} />

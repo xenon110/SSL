@@ -1,259 +1,279 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
-function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
-  const d = new Date(dateString);
-  let bucketType = 'monthly';
-  
-  if (startDateStr && endDateStr) {
-    const start = new Date(startDateStr).getTime();
-    const end = new Date(endDateStr).getTime();
-    const diffDays = (end - start) / (1000 * 3600 * 24);
-    
-    if (diffDays <= 31) bucketType = 'daily';
-    else if (diffDays <= 90) bucketType = 'weekly';
-    else if (diffDays <= 366) bucketType = 'monthly';
-    else bucketType = 'yearly';
-  }
+export const dynamic = 'force-dynamic';
 
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  
-  if (bucketType === 'daily') {
-    return { label: d.toLocaleDateString('default', { month: 'short', day: 'numeric' }), sortKey: d.getTime() };
-  } else if (bucketType === 'weekly') {
-    const diff = d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1);
-    const weekStart = new Date(d.setDate(diff));
-    return { label: `Wk of ${weekStart.toLocaleDateString('default', { month: 'short', day: 'numeric' })}`, sortKey: weekStart.getTime() };
-  } else if (bucketType === 'yearly') {
-    return { label: y.toString(), sortKey: new Date(y, 0, 1).getTime() };
-  } else {
-    return { label: d.toLocaleDateString('default', { month: 'short', year: '2-digit' }), sortKey: new Date(y, m, 1).getTime() };
-  }
-}
+const getEmptyPnlState = () => ({
+  kpis: {
+    totalDirectIncome: 0, totalIndirectIncome: 0, totalDirectExpense: 0, totalIndirectExpense: 0,
+    grossProfit: 0, netProfit: 0, totalIncome: 0, totalExpense: 0, gpMargin: 0, npMargin: 0, operatingMargin: 0
+  },
+  insights: { topProducts: [], topCustomers: [], topVendors: [], stateWiseRevenue: [] },
+  trendData: [], topIncomes: [], topExpenses: [], detailedTransactions: []
+});
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
+    const startDate = searchParams.get('startDate') || '2025-04-01';
+    const endDate = searchParams.get('endDate') || '2026-03-31';
 
-    // 1. Fetch all groups to resolve hierarchy
-    const { data: groups, error: groupsError } = await supabase.from('groups').select('name, parent');
-    if (groupsError) throw groupsError;
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+    
+    let companyIds: string[] = [];
+    let decodedName = decodeURIComponent(activeCompany);
+    
+    const baseNameMatch = decodedName.match(/^(.*?)\s*-\s*\(from/);
+    const baseName = baseNameMatch ? baseNameMatch[1].trim() : decodedName;
 
-    // 2. Fetch all ledgers to classify them
-    const { data: ledgers, error: ledgersError } = await supabase.from('ledgers').select('name, parent_group, state');
+    const { data: relatedComps } = await supabase.from('companies').select('id').ilike('name', `${baseName}%`);
+    if (relatedComps && relatedComps.length > 0) {
+      companyIds = relatedComps.map(c => c.id);
+    } else {
+      const { data: fallback } = await supabase.from('companies').select('id').ilike('name', 'SMRIDHI SPONGE LIMITED%');
+      if (fallback && fallback.length > 0) {
+        companyIds = fallback.map(c => c.id);
+      } else {
+        return NextResponse.json(getEmptyPnlState());
+      }
+    }
+
+    // Group Classifications
+    const directIncomeGroups = ['Sales Accounts', 'Direct Incomes', 'Sales - Sponge Iron'];
+    const indirectIncomeGroups = ['Indirect Incomes'];
+    const directExpenseGroups = ['Purchase Accounts', 'Direct Expenses', 'Purchase Under GST Law'];
+    const indirectExpenseGroups = [
+      'Indirect Expenses', 'Misc. Expenses', 'Staff Welfare Expenses', 'Salary', 'Wages', 
+      'Travelling & Coneyance', 'Printing & Stationery', 'Rent, Rates & Taxes', 'Repair & Maintenance', 
+      'Director Remuneration', 'Finance Cost', 'Bank Charges', 'Consultancy & Legal', 'Kolkata Office Exp', 
+      'DRC-03 Tax', 'DRC-03 Int', 'DRC-03 Penalty'
+    ];
+
+    const allGroups = [...directIncomeGroups, ...indirectIncomeGroups, ...directExpenseGroups, ...indirectExpenseGroups];
+
+    // 1. Fetch ledgers
+    const { data: ledgers, error: ledgersError } = await supabase
+      .from('ledgers')
+      .select('name, parent_group')
+      .in('company_id', companyIds)
+      .in('parent_group', allGroups);
+      
     if (ledgersError) throw ledgersError;
+    
+    const ledgerMap = new Map();
+    ledgers?.forEach(l => {
+        let type = 'UNKNOWN';
+        let isDirect = false;
+        if (directIncomeGroups.includes(l.parent_group)) { type = 'INCOME'; isDirect = true; }
+        else if (indirectIncomeGroups.includes(l.parent_group)) { type = 'INCOME'; isDirect = false; }
+        else if (directExpenseGroups.includes(l.parent_group)) { type = 'EXPENSE'; isDirect = true; }
+        else if (indirectExpenseGroups.includes(l.parent_group)) { type = 'EXPENSE'; isDirect = false; }
 
-    const ledgerStateMap = new Map<string, string>();
-
-    // Resolve Root Group for a given group name
-    const groupMap = new Map(groups.map(g => [g.name, g.parent]));
-    const getRootPnlGroup = (groupName: string): 'Direct Incomes' | 'Indirect Incomes' | 'Direct Expenses' | 'Indirect Expenses' | null => {
-      let current = groupName;
-      let depth = 0;
-      while (current && depth < 20) {
-        if (current === 'Sales Accounts' || current === 'Direct Incomes') return 'Direct Incomes';
-        if (current === 'Indirect Incomes') return 'Indirect Incomes';
-        if (current === 'Purchase Accounts' || current === 'Direct Expenses') return 'Direct Expenses';
-        if (current === 'Indirect Expenses') return 'Indirect Expenses';
-        current = groupMap.get(current) || '';
-        depth++;
-      }
-      return null;
-    };
-
-    const pnlLedgers = new Map<string, { type: string, rootGroup: string }>();
-    ledgers.forEach(l => {
-      if (l.state) ledgerStateMap.set(l.name, l.state);
-      const root = getRootPnlGroup(l.parent_group);
-      if (root) {
-        pnlLedgers.set(l.name, {
-           type: root.includes('Income') ? 'INCOME' : 'EXPENSE',
-           rootGroup: root
-        });
-      }
+        ledgerMap.set(l.name, { type, isDirect, rootGroup: l.parent_group });
     });
 
-    // 3. Fetch vouchers that contain P&L ledgers
+    const targetLedgerNames = ledgers?.map(l => l.name) || [];
+
+    if (targetLedgerNames.length === 0) {
+        return NextResponse.json(getEmptyPnlState());
+    }
+
+    // 2. Fetch Vouchers using fetchAllData helper
     let query = supabase
       .from('vouchers')
-      .select('*, voucher_ledgers(*), voucher_inventory(*)');
+      .select('id, date')
+      .in('company_id', companyIds)
+      .eq('is_deleted', false)
+      .eq('is_cancelled', false)
+      .eq('is_optional', false)
+      .gte('date', startDate)
+      .lte('date', endDate);
 
-    if (startDate) query = query.gte('date', startDate);
-    if (endDate) query = query.lte('date', endDate);
+    const { data: activeVouchers, error: voucherError } = await fetchAllData(query);
+    if (voucherError) throw voucherError;
+    if (!activeVouchers || activeVouchers.length === 0) return NextResponse.json(getEmptyPnlState());
 
-    const { data: vouchers, error } = await query;
-    if (error) throw error;
+    // 3. Chunk IDs and fetch voucher_ledgers
+    const activeVoucherIds = activeVouchers.map(v => v.id);
+    const chunkArray = (arr: any[], size: number) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+    const idChunks = chunkArray(activeVoucherIds, 150);
+    
+    const voucherDateMap = new Map();
+    activeVouchers.forEach(v => voucherDateMap.set(v.id, v.date));
 
+    let allLedgerTx: any[] = [];
+    let allInvTx: any[] = [];
+    
+    for (const chunk of idChunks) {
+        const { data: chunkL, error: lErr } = await fetchAllData(
+            supabase.from('voucher_ledgers').select('voucher_id, ledger_name, amount, is_debit').in('voucher_id', chunk)
+        );
+        if (lErr) throw lErr;
+        if (chunkL) allLedgerTx = allLedgerTx.concat(chunkL);
+
+        const { data: chunkInv } = await fetchAllData(
+            supabase.from('voucher_inventory').select('voucher_id, stock_item_name, billed_qty, rate, amount, is_inward').in('voucher_id', chunk)
+        );
+        if (chunkInv) allInvTx = allInvTx.concat(chunkInv);
+    }
+
+    const invMap = new Map();
+    allInvTx.forEach(tx => {
+        if (!invMap.has(tx.voucher_id)) invMap.set(tx.voucher_id, []);
+        invMap.get(tx.voucher_id).push(tx);
+    });
+
+    const fullLedgerMap = new Map();
+    allLedgerTx.forEach(tx => {
+        if (!fullLedgerMap.has(tx.voucher_id)) fullLedgerMap.set(tx.voucher_id, []);
+        fullLedgerMap.get(tx.voucher_id).push(tx);
+    });
+
+    // 4. Process Data
     let totalDirectIncome = 0;
     let totalIndirectIncome = 0;
     let totalDirectExpense = 0;
     let totalIndirectExpense = 0;
 
-    const timeBuckets: Record<string, { label: string, sortKey: number, income: number, expense: number, gp: number, np: number, dIn: number, iIn: number, dEx: number, iEx: number }> = {};
-    const ledgerAggregates: Record<string, { name: string, rootGroup: string, type: 'INCOME'|'EXPENSE', amount: number, count: number }> = {};
-    const detailedTransactions: any[] = [];
-    
-    // Deep Insights
-    const topProductsMap: Record<string, number> = {};
-    const topCustomersMap: Record<string, number> = {};
-    const topVendorsMap: Record<string, number> = {};
-    const stateWiseMap: Record<string, number> = {};
+    const monthlyMap = new Map();
+    const ledgerTotals = new Map();
+    const transactions: any[] = [];
 
-    (vouchers || []).forEach(v => {
-      const bucket = getTimeBucket(v.date, startDate, endDate);
-      if (!timeBuckets[bucket.label]) {
-        timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, income: 0, expense: 0, gp: 0, np: 0, dIn: 0, iIn: 0, dEx: 0, iEx: 0 };
-      }
+    // Filter allLedgerTx to only those in our targetLedgerNames for the main PNL list
+    const pnlDetailedTx = allLedgerTx.filter(tx => targetLedgerNames.includes(tx.ledger_name));
 
-      const vType = (v.voucher_type_name || '').toLowerCase();
-      const isSale = vType.includes('sale');
-      const isPurchase = vType.includes('purchase');
-
-      if (isSale && v.party_ledger_name) {
-          const state = ledgerStateMap.get(v.party_ledger_name) || 'Unknown';
-          const totalAmount = Number(v.amount) || 0;
-          if (totalAmount > 0) {
-              topCustomersMap[v.party_ledger_name] = (topCustomersMap[v.party_ledger_name] || 0) + totalAmount;
-              stateWiseMap[state] = (stateWiseMap[state] || 0) + totalAmount;
-          }
-      }
-      
-      if (isPurchase && v.party_ledger_name) {
-          const totalAmount = Number(v.amount) || 0;
-          if (totalAmount > 0) {
-              topVendorsMap[v.party_ledger_name] = (topVendorsMap[v.party_ledger_name] || 0) + totalAmount;
-          }
-      }
-
-      (v.voucher_inventory || []).forEach((inv: any) => {
-          if (!inv.is_inward) { // Sales
-             const amt = Number(inv.amount) || 0;
-             if (inv.stock_item_name && amt > 0) {
-                topProductsMap[inv.stock_item_name] = (topProductsMap[inv.stock_item_name] || 0) + amt;
-             }
-          }
-      });
-
-      (v.voucher_ledgers || []).forEach((l: any) => {
-        const ledgerInfo = pnlLedgers.get(l.ledger_name);
-        if (!ledgerInfo) return; // Not a P&L ledger
-
-        let amount = Number(l.amount) || 0;
-        let effectiveAmount = 0;
+    pnlDetailedTx.forEach(tx => {
+        const dateStr = voucherDateMap.get(tx.voucher_id);
+        if (!dateStr) return;
         
-        if (ledgerInfo.type === 'INCOME') {
-           effectiveAmount = l.is_debit ? -amount : amount;
-           if (ledgerInfo.rootGroup === 'Direct Incomes') {
-               totalDirectIncome += effectiveAmount;
-               timeBuckets[bucket.label].dIn += effectiveAmount;
-           } else {
-               totalIndirectIncome += effectiveAmount;
-               timeBuckets[bucket.label].iIn += effectiveAmount;
-           }
-           timeBuckets[bucket.label].income += effectiveAmount;
-        } else {
-           effectiveAmount = l.is_debit ? amount : -amount;
-           if (ledgerInfo.rootGroup === 'Direct Expenses') {
-               totalDirectExpense += effectiveAmount;
-               timeBuckets[bucket.label].dEx += effectiveAmount;
-           } else {
-               totalIndirectExpense += effectiveAmount;
-               timeBuckets[bucket.label].iEx += effectiveAmount;
-           }
-           timeBuckets[bucket.label].expense += effectiveAmount;
+        const lInfo = ledgerMap.get(tx.ledger_name);
+        if (!lInfo) return;
+
+        const { type, isDirect, rootGroup } = lInfo;
+
+        let txValue = tx.amount;
+        if (type === 'EXPENSE') txValue = tx.is_debit ? tx.amount : -tx.amount;
+        else if (type === 'INCOME') txValue = tx.is_debit ? -tx.amount : tx.amount;
+
+        if (type === 'INCOME') {
+            if (isDirect) totalDirectIncome += txValue;
+            else totalIndirectIncome += txValue;
+        } else if (type === 'EXPENSE') {
+            if (isDirect) totalDirectExpense += txValue;
+            else totalIndirectExpense += txValue;
         }
 
-        if (!ledgerAggregates[l.ledger_name]) {
-           ledgerAggregates[l.ledger_name] = { 
-              name: l.ledger_name, 
-              rootGroup: ledgerInfo.rootGroup,
-              type: ledgerInfo.type as 'INCOME'|'EXPENSE',
-              amount: 0, 
-              count: 0 
-           };
+        const d = new Date(dateStr);
+        const mKey = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear().toString().substring(2);
+        const sortKey = d.getFullYear() * 100 + d.getMonth();
+        
+        if (!monthlyMap.has(mKey)) {
+            monthlyMap.set(mKey, { month: mKey, totalIncome: 0, totalExpense: 0, netProfit: 0, sortKey });
         }
-        ledgerAggregates[l.ledger_name].amount += effectiveAmount;
-        ledgerAggregates[l.ledger_name].count += 1;
+        const m = monthlyMap.get(mKey);
+        
+        if (type === 'INCOME') m.totalIncome += txValue;
+        if (type === 'EXPENSE') m.totalExpense += txValue;
+        m.netProfit = m.totalIncome - m.totalExpense;
 
-        // Push to detailed transactions for deep drill-down
-        detailedTransactions.push({
-           id: v.voucher_number || v.tally_guid.substring(0,8),
-           date: v.date,
-           type: ledgerInfo.type,
-           ledger: l.ledger_name,
-           amount: effectiveAmount,
-           voucherType: v.voucher_type_name,
-           items: (v.voucher_inventory || []).map((inv: any) => ({
-             product: inv.stock_item_name || "Unknown",
-             qty: inv.billed_qty || 0,
-             rate: inv.rate || 0,
-             amount: inv.amount || 0
-           })),
-           ledgers: (v.voucher_ledgers || []).map((vl: any) => ({
-             name: vl.ledger_name,
-             amount: Number(vl.amount),
-             is_debit: vl.is_debit
-           }))
+        if (!ledgerTotals.has(tx.ledger_name)) {
+            ledgerTotals.set(tx.ledger_name, { name: tx.ledger_name, type, amount: 0, count: 0, rootGroup });
+        }
+        const lt = ledgerTotals.get(tx.ledger_name);
+        lt.amount += txValue;
+        lt.count += 1;
+
+        transactions.push({
+            id: tx.voucher_id,
+            date: dateStr,
+            ledger: tx.ledger_name,
+            amount: txValue,
+            type: type,
+            isGroup: false,
+            rootGroup: rootGroup,
+            items: (invMap.get(tx.voucher_id) || []).map((inv: any) => ({
+                product: inv.stock_item_name || 'Unknown',
+                qty: inv.billed_qty || 0,
+                rate: inv.rate || 0,
+                amount: inv.amount || 0
+            })),
+            ledgers: (fullLedgerMap.get(tx.voucher_id) || []).map((l: any) => ({
+                name: l.ledger_name,
+                amount: Number(l.amount) || 0,
+                is_debit: l.is_debit
+            }))
         });
-      });
     });
 
-    Object.values(timeBuckets).forEach(t => {
-      t.gp = t.dIn - t.dEx;
-      t.np = t.income - t.expense;
-    });
-    
-    const finalLedgers = Object.values(ledgerAggregates).filter(l => l.amount !== 0);
-    const topIncomes = finalLedgers.filter(l => l.type === 'INCOME').sort((a, b) => b.amount - a.amount);
-    const topExpenses = finalLedgers.filter(l => l.type === 'EXPENSE').sort((a, b) => b.amount - a.amount);
+    const trendData = Array.from(monthlyMap.values()).sort((a, b) => a.sortKey - b.sortKey);
+    const topIncomes = Array.from(ledgerTotals.values())
+        .filter(l => l.type === 'INCOME' && l.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+        
+    const topExpenses = Array.from(ledgerTotals.values())
+        .filter(l => l.type === 'EXPENSE' && l.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
 
-    const grossProfit = totalDirectIncome - totalDirectExpense;
     const totalIncome = totalDirectIncome + totalIndirectIncome;
     const totalExpense = totalDirectExpense + totalIndirectExpense;
-    const netProfit = totalIncome - totalExpense;
+    const grossProfit = totalDirectIncome - totalDirectExpense;
+    const netProfit = grossProfit + totalIndirectIncome - totalIndirectExpense;
 
     const gpMargin = totalDirectIncome > 0 ? (grossProfit / totalDirectIncome) * 100 : 0;
-    const npMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
+    const npMargin = totalDirectIncome > 0 ? (netProfit / totalDirectIncome) * 100 : 0;
+    const operatingMargin = totalDirectIncome > 0 ? ((grossProfit - totalIndirectExpense) / totalDirectIncome) * 100 : 0;
 
-    const formatInsights = (map: Record<string, number>, limit: number = 10) => {
-        return Object.entries(map)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, limit);
-    };
+    // 5. Insights Generation
+    const productTotals = new Map();
+    allInvTx.forEach(tx => {
+        if (!tx.is_inward) { // Sales
+            const amt = Number(tx.amount) || 0;
+            productTotals.set(tx.stock_item_name, (productTotals.get(tx.stock_item_name) || 0) + amt);
+        }
+    });
+    const topProducts = Array.from(productTotals.entries()).map(([name, amount]) => ({ name, value: amount })).sort((a,b) => b.value - a.value).slice(0, 5);
 
-    const trendData = Object.values(timeBuckets).sort((a, b) => a.sortKey - b.sortKey);
+    const { data: partyLedgers } = await supabase.from('ledgers').select('name, parent_group').in('company_id', companyIds).or('parent_group.eq.Sundry Debtors,parent_group.like.Creditor%');
+    const partyMap = new Map();
+    if (partyLedgers) {
+        partyLedgers.forEach(l => partyMap.set(l.name, l.parent_group === 'Sundry Debtors' ? 'CUSTOMER' : 'VENDOR'));
+    }
+    
+    const customerTotals = new Map();
+    const vendorTotals = new Map();
+    allLedgerTx.forEach(tx => {
+        if (partyMap.has(tx.ledger_name)) {
+            const type = partyMap.get(tx.ledger_name);
+            const amt = Number(tx.amount) || 0;
+            if (type === 'CUSTOMER') customerTotals.set(tx.ledger_name, (customerTotals.get(tx.ledger_name) || 0) + amt);
+            else if (type === 'VENDOR') vendorTotals.set(tx.ledger_name, (vendorTotals.get(tx.ledger_name) || 0) + amt);
+        }
+    });
+    
+    const topCustomers = Array.from(customerTotals.entries()).map(([name, amount]) => ({ name, value: amount })).sort((a,b) => b.value - a.value).slice(0, 5);
+    const topVendors = Array.from(vendorTotals.entries()).map(([name, amount]) => ({ name, value: amount })).sort((a,b) => b.value - a.value).slice(0, 5);
 
     return NextResponse.json({
-      kpis: {
-        totalDirectIncome,
-        totalIndirectIncome,
-        totalDirectExpense,
-        totalIndirectExpense,
-        grossProfit,
-        netProfit,
-        totalIncome,
-        totalExpense,
-        gpMargin,
-        npMargin,
-        operatingMargin: totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0
-      },
-      insights: {
-        topProducts: formatInsights(topProductsMap),
-        topCustomers: formatInsights(topCustomersMap),
-        topVendors: formatInsights(topVendorsMap),
-        stateWiseRevenue: formatInsights(stateWiseMap)
-      },
-      trendData,
-      topIncomes,
-      topExpenses,
-      detailedTransactions
+        kpis: {
+            totalDirectIncome, totalIndirectIncome, totalDirectExpense, totalIndirectExpense,
+            grossProfit, netProfit, totalIncome, totalExpense, gpMargin, npMargin, operatingMargin
+        },
+        insights: {
+            topProducts,
+            topCustomers,
+            topVendors,
+            stateWiseRevenue: []
+        },
+        trendData,
+        topIncomes: topIncomes.slice(0, 15),
+        topExpenses: topExpenses.slice(0, 15),
+        detailedTransactions: transactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     });
-  } catch (err: any) {
-    console.error('API Error:', err);
-    return NextResponse.json({ error: 'Failed to fetch P&L data' }, { status: 500 });
+
+  } catch (error: any) {
+    console.error("Error generating exact PNL:", error);
+    return NextResponse.json(getEmptyPnlState());
   }
 }

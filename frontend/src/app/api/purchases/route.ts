@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
 import { mockDashboardData } from '@/lib/mockData';
+import { cookies } from 'next/headers';
 
 function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
   const d = new Date(dateString);
@@ -33,6 +34,19 @@ function getTimeBucket(dateString: string, startDateStr: string | null, endDateS
   }
 }
 
+const getEmptyPurchasesState = () => ({
+  kpis: {
+    totalPurchases: { value: 0, growth: 0 }, 
+    avgOrderValue: { value: 0, growth: 0 },
+    activeSuppliers: { value: 0, growth: 0 },
+    pendingOrders: { value: 0, growth: 0 }
+  },
+  purchaseTrend: [],
+  topSuppliers: [],
+  purchasesByProduct: [],
+  defectiveSuppliers: [],
+  detailedTransactions: []
+});
 
 export async function GET(request: Request) {
   try {
@@ -40,15 +54,36 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    const cookieStore = await cookies();
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
+    
+    let companyId = null;
+    let decodedName = decodeURIComponent(activeCompany);
+    const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
+    if (comp) {
+      companyId = comp.id;
+    } else {
+      const { data: bkmComp } = await supabase.from('companies').select('id').eq('name', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)').single();
+      if (bkmComp) {
+        companyId = bkmComp.id;
+      } else {
+        return NextResponse.json(getEmptyPurchasesState());
+      }
+    }
+
     let query = supabase
       .from('vouchers')
       .select('*, voucher_ledgers(*), voucher_inventory(*)')
+      .eq('company_id', companyId)
+      .eq('is_deleted', false)
+      .eq('is_cancelled', false)
+      .eq('is_optional', false)
       .or('voucher_type_name.ilike.%purchase%,voucher_type_name.ilike.%debit note%,voucher_type_name.ilike.%return%,voucher_type_name.ilike.%order%');
 
     if (startDate) query = query.gte('date', startDate);
     if (endDate) query = query.lte('date', endDate);
 
-    const { data: vouchers, error } = await query;
+    const { data: vouchers, error } = await fetchAllData(query);
 
     const isAdjusted = searchParams.get('adjusted') === 'true';
 
@@ -191,10 +226,11 @@ export async function GET(request: Request) {
     const topSuppliersArr = Object.entries(supplierPurchases)
       .map(([name, data]) => ({ 
         name, 
-        sales: data.amount, // keeping key as 'sales' for chart compat
+        sales: data.amount, 
+        purchases: data.amount, // Set both for chart compatibility
         dependencyPercentage: totalPurchases > 0 ? (data.amount / totalPurchases) * 100 : 0
       }))
-      .sort((a, b) => b.sales - a.sales);
+      .sort((a, b) => b.purchases - a.purchases);
 
     const purchasesByProduct = Object.entries(productPurchases)
       .map(([name, data]) => ({ 
@@ -216,6 +252,15 @@ export async function GET(request: Request) {
       .map(([name, data]) => ({ name, returns: data.amount, count: data.count }))
       .sort((a, b) => b.returns - a.returns);
 
+    let minDate: string | null = null;
+    let maxDate: string | null = null;
+    vouchers?.forEach(v => {
+      if (v.date) {
+        if (!minDate || v.date < minDate) minDate = v.date;
+        if (!maxDate || v.date > maxDate) maxDate = v.date;
+      }
+    });
+
     const liveData = {
       kpis: {
         totalPurchases: { value: totalPurchases, growth: 0 }, 
@@ -227,7 +272,8 @@ export async function GET(request: Request) {
       topSuppliers: topSuppliersArr,
       purchasesByProduct: purchasesByProduct,
       defectiveSuppliers: defectiveSuppliers,
-      detailedTransactions: detailedTx.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      detailedTransactions: detailedTx.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      dateBounds: { minDate, maxDate }
     };
 
     return NextResponse.json(liveData);

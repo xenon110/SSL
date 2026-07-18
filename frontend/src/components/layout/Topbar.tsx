@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, ChevronDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,71 @@ export function Topbar() {
   const router = useRouter();
   const [profile, setProfile] = useState<{ full_name?: string; email?: string; avatar_url?: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [companies, setCompanies] = useState<{id: string, name: string}[]>([]);
+  const [activeCompany, setActiveCompany] = useState<string>("SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)");
+ 
+  useEffect(() => {
+    async function loadActiveCompanyAndList() {
+      // Load active company from cookie
+      const cookiesArr = document.cookie.split('; ');
+      const activeCookie = cookiesArr.find(row => row.startsWith('active-company='));
+      let currentCompany = "SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)";
+      if (activeCookie) {
+        currentCompany = decodeURIComponent(activeCookie.split('=')[1]);
+      } else {
+        document.cookie = `active-company=${encodeURIComponent(currentCompany)}; path=/; max-age=86400`;
+      }
+
+      // Fetch companies list
+      try {
+        const res = await fetch('/api/tally-companies');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.companies && json.companies.length > 0) {
+            const filtered = json.companies.filter((c: any) => c.name.toLowerCase().includes("smridhi"));
+            setCompanies(filtered);
+            
+            const isValid = filtered.some((c: any) => c.name === currentCompany);
+            if (!isValid && filtered.length > 0) {
+              currentCompany = filtered[0].name;
+              document.cookie = `active-company=${encodeURIComponent(currentCompany)}; path=/; max-age=86400`;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load companies", err);
+      }
+      
+      setActiveCompany(currentCompany);
+    }
+    loadActiveCompanyAndList();
+  }, []);
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleCompanySwitch = async (name: string) => {
+    setActiveCompany(name);
+    setIsSyncing(true);
+    
+    // Set cookie immediately so reload displays selected company right away
+    document.cookie = `active-company=${encodeURIComponent(name)}; path=/; max-age=86400`;
+    
+    // Trigger sync in background non-blockingly
+    fetch(`/api/sync?company=${encodeURIComponent(name)}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          console.log(`Background synced ${name}: ${JSON.stringify(result.counts)}`);
+        }
+      })
+      .catch(e => console.error('Background sync failed:', e));
+      
+    // Snappy reload to load existing cached data immediately
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,8 +131,26 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-6">
-      <div className="flex flex-1 items-center gap-4">
+    <>
+      {/* Full-screen syncing overlay */}
+      {isSyncing && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
+            <div className="h-14 w-14 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin"></div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-800 dark:text-white">Syncing from Tally...</p>
+              <p className="text-sm text-slate-500 mt-1">Fetching live data for <span className="font-semibold text-indigo-600">{activeCompany}</span></p>
+              <p className="text-xs text-slate-400 mt-2 animate-pulse">This may take 15-60 seconds for large companies</p>
+            </div>
+          </div>
+        </div>
+      )}
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-6 shadow-sm">
+      <div className="flex flex-1 items-center gap-6">
+        <div className="hidden lg:flex min-w-[240px] max-w-[320px] items-center h-10 px-4 py-2 text-sm font-bold text-indigo-700 border border-indigo-200 rounded-md bg-indigo-50/50 transition-colors">
+          <span className="truncate">{activeCompany}</span>
+        </div>
+
         <form onSubmit={handleSearch} className="hidden w-full max-w-sm lg:flex">
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -76,7 +159,7 @@ export function Topbar() {
               placeholder="Search reports, ledgers, or invoices..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full appearance-none bg-background pl-8 shadow-none"
+              className="w-full appearance-none bg-background pl-8 shadow-none border-slate-200"
             />
           </div>
         </form>
@@ -119,5 +202,6 @@ export function Topbar() {
         </DropdownMenu>
       </div>
     </header>
+    </>
   );
 }
