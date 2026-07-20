@@ -125,6 +125,46 @@ class TallyClient:
         """
         return self._send_request(xml_request)
 
+    def export_vouchers_by_alterid(self, last_alter_id: int = 0):
+        """
+        Fetch incremental vouchers using ALTERID.
+        """
+        xml_request = f"""
+        <ENVELOPE>
+            <HEADER>
+                <VERSION>1</VERSION>
+                <TALLYREQUEST>Export</TALLYREQUEST>
+                <TYPE>Collection</TYPE>
+                <ID>IncrementalVouchers</ID>
+            </HEADER>
+            <BODY>
+                <DESC>
+                    <STATICVARIABLES>
+                        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                        {f'<SVCURRENTCOMPANY>{self.company_name}</SVCURRENTCOMPANY>' if self.company_name else ''}
+                    </STATICVARIABLES>
+                    <TDL>
+                        <TDLMESSAGE>
+                            <COLLECTION NAME="IncrementalVouchers" ISINITIALIZE="Yes">
+                                <TYPE>Voucher</TYPE>
+                                <FETCH>DATE, GUID, VOUCHERTYPENAME, VOUCHERNUMBER, PARTYLEDGERNAME, AMOUNT, NARRATION, REFERENCE, ISCANCELLED, ISOPTIONAL, ISDELETED, ALTERID</FETCH>
+                                <FETCH>ALLLEDGERENTRIES.LIST.LEDGERNAME, ALLLEDGERENTRIES.LIST.AMOUNT, ALLLEDGERENTRIES.LIST.ISDEEMEDPOSITIVE</FETCH>
+                                <FETCH>INVENTORYENTRIES.LIST.STOCKITEMNAME, INVENTORYENTRIES.LIST.BILLEDQTY, INVENTORYENTRIES.LIST.RATE, INVENTORYENTRIES.LIST.AMOUNT, INVENTORYENTRIES.LIST.ACTUALQTY</FETCH>
+                                <FETCH>ALLINVENTORYENTRIES.LIST.STOCKITEMNAME, ALLINVENTORYENTRIES.LIST.BILLEDQTY, ALLINVENTORYENTRIES.LIST.RATE, ALLINVENTORYENTRIES.LIST.AMOUNT, ALLINVENTORYENTRIES.LIST.ACTUALQTY</FETCH>
+                                <FETCH>INVENTORYENTRIESIN.LIST.STOCKITEMNAME, INVENTORYENTRIESIN.LIST.BILLEDQTY, INVENTORYENTRIESIN.LIST.RATE, INVENTORYENTRIESIN.LIST.AMOUNT, INVENTORYENTRIESIN.LIST.ACTUALQTY</FETCH>
+                                <FETCH>INVENTORYENTRIESOUT.LIST.STOCKITEMNAME, INVENTORYENTRIESOUT.LIST.BILLEDQTY, INVENTORYENTRIESOUT.LIST.RATE, INVENTORYENTRIESOUT.LIST.AMOUNT, INVENTORYENTRIESOUT.LIST.ACTUALQTY</FETCH>
+                                <FETCH>LEDGERENTRIES.LIST.LEDGERNAME, LEDGERENTRIES.LIST.AMOUNT, LEDGERENTRIES.LIST.ISDEEMEDPOSITIVE</FETCH>
+                                <FILTER>AltIdFilter</FILTER>
+                            </COLLECTION>
+                            <SYSTEM TYPE="Formulae" NAME="AltIdFilter">$$NumValue:$ALTERID &gt; {last_alter_id}</SYSTEM>
+                        </TDLMESSAGE>
+                    </TDL>
+                </DESC>
+            </BODY>
+        </ENVELOPE>
+        """
+        return self._send_request(xml_request)
+
     def export_stock_summary(self, from_date: str = None, to_date: str = None):
         """
         Request Stock Summary report for Closing Stock and Valuation.

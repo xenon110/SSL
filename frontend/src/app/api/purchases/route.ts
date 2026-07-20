@@ -73,7 +73,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('vouchers')
-      .select('*, voucher_ledgers(*), voucher_inventory(*)')
+      .select('*, voucher_inventory(*)')
       .eq('company_id', companyId)
       .eq('is_deleted', false)
       .eq('is_cancelled', false)

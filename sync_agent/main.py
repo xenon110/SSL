@@ -96,20 +96,29 @@ def get_open_companies():
             time.sleep(wait)
     return []
 
-def archive_xml(xml_data: str, company_name: str, sync_id: str, data_type: str) -> str:
-    """Save XML to archive directory. Returns filename."""
-    ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-    safe_company = re.sub(r'[^a-zA-Z0-9_-]', '_', company_name)[:40]
-    filename = f"tally_{safe_company}_{ts}_{sync_id}_{data_type}.xml"
-    filepath = os.path.join(ARCHIVE_DIR, filename)
+def archive_xml(xml_content: str, company_name: str, sync_id: str, suffix: str):
+    """Save raw XML to disk for debugging/auditing."""
+    filename = f"{company_name.replace(' ', '_')}_{sync_id}_{suffix}.xml"
+    path = os.path.join(ARCHIVE_DIR, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(xml_content)
+    return filename
+
+def cleanup_old_archives(days_to_keep: int = 7):
+    """Delete archive XML files older than the specified number of days to prevent disk exhaustion."""
     try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(xml_data)
-        log(f"  Archived {data_type} XML: {filename} ({len(xml_data)} bytes)")
-        return filename
+        now = time.time()
+        cutoff = now - (days_to_keep * 86400)
+        deleted_count = 0
+        for filename in os.listdir(ARCHIVE_DIR):
+            path = os.path.join(ARCHIVE_DIR, filename)
+            if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
+                os.remove(path)
+                deleted_count += 1
+        if deleted_count > 0:
+            log(f"Cleaned up {deleted_count} old XML archive files.")
     except Exception as e:
-        log(f"  Failed to archive XML: {e}", "WARN")
-        return filename
+        log(f"Failed to cleanup old archives: {e}", "WARN")
 
 def validate_vouchers(vouchers: list) -> tuple:
     """
@@ -189,6 +198,108 @@ def save_sync_archive(sb, filename: str, company_id: str, sync_id: str, xml_size
     except Exception as e:
         log(f"  Failed to save archive metadata: {e}", "WARN")
 
+def _process_vouchers_chunk(sb, company_id, vouchers_raw, last_alter_id, max_alter_id, stats):
+    """Helper to process and upsert a batch of parsed vouchers."""
+    vouchers, validation_errors = validate_vouchers(vouchers_raw)
+    stats["validation_failures"] += len(validation_errors)
+    if validation_errors:
+        log(f"  Validation failures: {len(validation_errors)} (skipping those records)", "WARN")
+        for err in validation_errors[:5]:
+            log(f"    -> {err}", "WARN")
+
+    try:
+        existing_res = sb.table("vouchers").select("tally_guid").eq("company_id", company_id).execute()
+        existing_guids = {row["tally_guid"] for row in (existing_res.data or [])}
+    except Exception:
+        existing_guids = set()
+
+    new_vouchers = [v for v in vouchers if v.get("tally_guid") not in existing_guids]
+    update_vouchers = [v for v in vouchers if v.get("tally_guid") in existing_guids]
+    stats["duplicates_detected"] += len(vouchers_raw) - len(vouchers)
+    log(f"  New: {len(new_vouchers)}, Updates: {len(update_vouchers)}, Skipped invalid: {len(validation_errors)}")
+
+    v_new_or_modified = [v for v in vouchers if int(v.get("alter_id") or 0) > last_alter_id]
+    log(f"  Processing {len(v_new_or_modified)} new/altered vouchers...")
+
+    v_ok = 0
+    v_batch_size = 200
+    for i in range(0, len(v_new_or_modified), v_batch_size):
+        batch = v_new_or_modified[i:i+v_batch_size]
+        for v in batch:
+            alter_id_val = int(v.get("alter_id") or 0)
+            if alter_id_val > max_alter_id:
+                max_alter_id = alter_id_val
+        
+        db_batch = []
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        for v in batch:
+            db_batch.append({
+                "company_id": company_id, "tally_guid": v["tally_guid"],
+                "voucher_type_name": v["voucher_type_name"],
+                "voucher_number": v.get("voucher_number"),
+                "date": v["date"], "party_ledger_name": v.get("party_ledger_name", "Cash"),
+                "amount": float(v.get("amount", 0)), "narration": v.get("narration"),
+                "reference": v.get("reference"), "is_cancelled": v.get("is_cancelled", False),
+                "is_deleted": v.get("is_deleted", False), "is_optional": v.get("is_optional", False),
+                "entered_by": v.get("entered_by", ""), "altered_by": v.get("altered_by", ""),
+                "updated_at": now_iso
+            })
+            
+        try:
+            v_res = sb.table("vouchers").upsert(db_batch, on_conflict="tally_guid").execute()
+            if v_res.data:
+                guid_to_id = {row["tally_guid"]: row["id"] for row in v_res.data if row.get("tally_guid")}
+                voucher_ids = list(guid_to_id.values())
+                
+                if voucher_ids:
+                    sb.table("voucher_ledgers").delete().in_("voucher_id", voucher_ids).execute()
+                    sb.table("voucher_inventory").delete().in_("voucher_id", voucher_ids).execute()
+                    
+                ledger_entries = []
+                inv_entries = []
+                for v in batch:
+                    v_db_id = guid_to_id.get(v["tally_guid"])
+                    if not v_db_id:
+                        continue
+                    
+                    if v.get("ledgers"):
+                        for l in v["ledgers"]:
+                            ledger_entries.append({
+                                "voucher_id": v_db_id,
+                                "ledger_name": l["ledger_name"],
+                                "amount": float(l["amount"]),
+                                "is_debit": l.get("is_debit", False)
+                            })
+                            
+                    if v.get("inventory"):
+                        for inv in v["inventory"]:
+                            inv_entries.append({
+                                "voucher_id": v_db_id,
+                                "stock_item_name": inv["stock_item_name"],
+                                "billed_qty": float(inv["billed_qty"]),
+                                "actual_qty": float(inv.get("billed_qty", 0)),
+                                "rate": float(inv.get("rate", 0)),
+                                "amount": float(inv["amount"]),
+                                "is_inward": inv.get("is_inward", True)
+                            })
+                            
+                if ledger_entries:
+                    for j in range(0, len(ledger_entries), BATCH_SIZE):
+                        sb.table("voucher_ledgers").insert(ledger_entries[j:j+BATCH_SIZE]).execute()
+                        
+                if inv_entries:
+                    for j in range(0, len(inv_entries), BATCH_SIZE):
+                        sb.table("voucher_inventory").insert(inv_entries[j:j+BATCH_SIZE]).execute()
+                        
+                v_ok += len(batch)
+        except Exception as e:
+            log(f"  Failed batch in voucher upsert: {e}", "WARN")
+            stats["records_failed"] += len(batch)
+            
+    log(f"  Vouchers: {v_ok}/{len(v_new_or_modified)} synced successfully in chunk")
+    stats["records_inserted"] += v_ok
+    return max_alter_id
+
 def sync_company(sb, company_name: str):
     log(f">>> Starting Sync for: {company_name} <<<")
     sync_start = datetime.datetime.now(datetime.timezone.utc)
@@ -200,6 +311,8 @@ def sync_company(sb, company_name: str):
         "duplicates_detected": 0, "status": "success",
         "error_message": None
     }
+
+    historical_sync_complete = True
 
     # 1. Ensure company exists in Supabase
     try:
@@ -305,140 +418,65 @@ def sync_company(sb, company_name: str):
         log(f"  Stock Items: {s_ok} synced")
         stats["records_inserted"] += s_ok
 
-    # 4. Fetch Vouchers (full date range to catch all)
+    # 4. Fetch Vouchers (Dual Mode: Historical Chunking vs Live Mode)
     log("  Fetching vouchers...")
-    vouchers_xml = None
-    for attempt in range(3):
-        try:
-            vouchers_xml = tally.export_vouchers()
-            break
-        except Exception as e:
-            wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
-            log(f"  Voucher fetch attempt {attempt+1} failed. Retry in {wait}s", "WARN")
-            time.sleep(wait)
-
-    if vouchers_xml:
-        filename = archive_xml(vouchers_xml, company_name, sync_id, "vouchers")
-        save_sync_archive(sb, filename, company_id, sync_id, len(vouchers_xml))
-        
-        vouchers_raw = tally.parse_vouchers(vouchers_xml)
-        log(f"  Parsed {len(vouchers_raw)} vouchers from Tally")
-        
-        # Validation
-        vouchers, validation_errors = validate_vouchers(vouchers_raw)
-        stats["validation_failures"] = len(validation_errors)
-        if validation_errors:
-            log(f"  Validation failures: {len(validation_errors)} (skipping those records)", "WARN")
-            for err in validation_errors[:5]:  # Log first 5
-                log(f"    -> {err}", "WARN")
-
-        # Get existing GUIDs for duplicate check
-        try:
-            existing_res = sb.table("vouchers").select("tally_guid").eq("company_id", company_id).execute()
-            existing_guids = {row["tally_guid"] for row in (existing_res.data or [])}
-        except Exception:
-            existing_guids = set()
-
-        new_vouchers = [v for v in vouchers if v.get("tally_guid") not in existing_guids]
-        update_vouchers = [v for v in vouchers if v.get("tally_guid") in existing_guids]
-        stats["duplicates_detected"] = len(vouchers_raw) - len(vouchers)
-        log(f"  New: {len(new_vouchers)}, Updates: {len(update_vouchers)}, Skipped invalid: {len(validation_errors)}")
-
-        # Filter to only new or modified vouchers since last alter id checkpoint
-        v_new_or_modified = [v for v in vouchers if int(v.get("alter_id") or 0) > last_alter_id]
-        log(f"  Processing {len(v_new_or_modified)} new/altered vouchers since ALTERID={last_alter_id}...")
-
-        v_ok = 0
-        v_batch_size = 200
-        for i in range(0, len(v_new_or_modified), v_batch_size):
-            batch = v_new_or_modified[i:i+v_batch_size]
-            for v in batch:
-                alter_id_val = int(v.get("alter_id") or 0)
-                if alter_id_val > max_alter_id:
-                    max_alter_id = alter_id_val
-            
-            db_batch = []
-            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            for v in batch:
-                db_batch.append({
-                    "company_id": company_id, "tally_guid": v["tally_guid"],
-                    "voucher_type_name": v["voucher_type_name"],
-                    "voucher_number": v.get("voucher_number"),
-                    "date": v["date"], "party_ledger_name": v.get("party_ledger_name", "Cash"),
-                    "amount": float(v.get("amount", 0)), "narration": v.get("narration"),
-                    "reference": v.get("reference"), "is_cancelled": v.get("is_cancelled", False),
-                    "is_deleted": v.get("is_deleted", False), "is_optional": v.get("is_optional", False),
-                    "entered_by": v.get("entered_by", ""), "altered_by": v.get("altered_by", ""),
-                    "updated_at": now_iso
-                })
-                
+    if last_alter_id > 0:
+        # LIVE MODE: Lightning fast sync using ALTERID
+        log("  [LIVE MODE] Fetching incremental vouchers by ALTERID...")
+        vouchers_xml = None
+        for attempt in range(3):
             try:
-                v_res = sb.table("vouchers").upsert(db_batch, on_conflict="tally_guid").execute()
-                if v_res.data:
-                    guid_to_id = {row["tally_guid"]: row["id"] for row in v_res.data if row.get("tally_guid")}
-                    voucher_ids = list(guid_to_id.values())
-                    
-                    if voucher_ids:
-                        sb.table("voucher_ledgers").delete().in_("voucher_id", voucher_ids).execute()
-                        sb.table("voucher_inventory").delete().in_("voucher_id", voucher_ids).execute()
-                        
-                    ledger_entries = []
-                    inv_entries = []
-                    for v in batch:
-                        v_db_id = guid_to_id.get(v["tally_guid"])
-                        if not v_db_id:
-                            continue
-                        
-                        if v.get("ledgers"):
-                            for l in v["ledgers"]:
-                                ledger_entries.append({
-                                    "voucher_id": v_db_id,
-                                    "ledger_name": l["ledger_name"],
-                                    "amount": float(l["amount"]),
-                                    "is_debit": l.get("is_debit", False)
-                                })
-                                
-                        if v.get("inventory"):
-                            for inv in v["inventory"]:
-                                inv_entries.append({
-                                    "voucher_id": v_db_id,
-                                    "stock_item_name": inv["stock_item_name"],
-                                    "billed_qty": float(inv["billed_qty"]),
-                                    "actual_qty": float(inv.get("billed_qty", 0)),
-                                    "rate": float(inv.get("rate", 0)),
-                                    "amount": float(inv["amount"]),
-                                    "is_inward": inv.get("is_inward", True)
-                                })
-                                
-                    if ledger_entries:
-                        for j in range(0, len(ledger_entries), BATCH_SIZE):
-                            sb.table("voucher_ledgers").insert(ledger_entries[j:j+BATCH_SIZE]).execute()
-                            
-                    if inv_entries:
-                        for j in range(0, len(inv_entries), BATCH_SIZE):
-                            sb.table("voucher_inventory").insert(inv_entries[j:j+BATCH_SIZE]).execute()
-                            
-                    v_ok += len(batch)
+                vouchers_xml = tally.export_vouchers_by_alterid(last_alter_id)
+                break
             except Exception as e:
-                log(f"  Failed batch in voucher upsert: {e}", "WARN")
-                stats["records_failed"] += len(batch)
-                
-        log(f"  Vouchers: {v_ok}/{len(v_new_or_modified)} synced successfully")
-        stats["records_inserted"] += v_ok
+                wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
+                log(f"  Incremental voucher fetch attempt {attempt+1} failed. Retry in {wait}s", "WARN")
+                time.sleep(wait)
 
-        # Mark deleted vouchers
-        try:
-            synced_guids = [v["tally_guid"] for v in vouchers if v.get("tally_guid")]
-            db_vouchers = sb.table("vouchers").select("tally_guid").eq("company_id", company_id).eq("is_deleted", False).execute()
-            if db_vouchers.data:
-                db_guids = [row["tally_guid"] for row in db_vouchers.data if row.get("tally_guid")]
-                deleted_guids = list(set(db_guids) - set(synced_guids))
-                if deleted_guids:
-                    log(f"  Marking {len(deleted_guids)} deleted vouchers...")
-                    for i in range(0, len(deleted_guids), 500):
-                        sb.table("vouchers").update({"is_deleted": True}).in_("tally_guid", deleted_guids[i:i+500]).execute()
-        except Exception as e:
-            log(f"  Error marking deleted vouchers: {e}", "WARN")
+        if vouchers_xml:
+            filename = archive_xml(vouchers_xml, company_name, sync_id, "vouchers_inc")
+            save_sync_archive(sb, filename, company_id, sync_id, len(vouchers_xml))
+            vouchers_raw = tally.parse_vouchers(vouchers_xml)
+            log(f"  Parsed {len(vouchers_raw)} incremental vouchers from Tally")
+            max_alter_id = _process_vouchers_chunk(sb, company_id, vouchers_raw, last_alter_id, max_alter_id, stats)
+    else:
+        # HISTORICAL MODE: Chunked loading
+        log("  [HISTORICAL MODE] First time sync. Fetching vouchers in monthly chunks...")
+        # Start from April 1, 2019
+        current_date = datetime.date(2019, 4, 1)
+        end_date = datetime.date.today()
+        
+        while current_date <= end_date:
+            chunk_end = current_date + datetime.timedelta(days=30)
+            if chunk_end > end_date:
+                chunk_end = end_date
+                
+            from_str = current_date.strftime("%Y%m%d")
+            to_str = chunk_end.strftime("%Y%m%d")
+            log(f"  Fetching chunk: {from_str} to {to_str}...")
+            
+            vouchers_xml = None
+            for attempt in range(3):
+                try:
+                    vouchers_xml = tally.export_vouchers(from_str, to_str)
+                    break
+                except Exception as e:
+                    wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
+                    log(f"  Chunk fetch attempt {attempt+1} failed. Retry in {wait}s", "WARN")
+                    time.sleep(wait)
+            
+            if vouchers_xml:
+                filename = archive_xml(vouchers_xml, company_name, sync_id, f"vouchers_chunk_{from_str}")
+                save_sync_archive(sb, filename, company_id, sync_id, len(vouchers_xml))
+                vouchers_raw = tally.parse_vouchers(vouchers_xml)
+                log(f"  Parsed {len(vouchers_raw)} vouchers in chunk")
+                max_alter_id = _process_vouchers_chunk(sb, company_id, vouchers_raw, last_alter_id, max_alter_id, stats)
+                current_date = chunk_end + datetime.timedelta(days=1)
+            else:
+                log(f"  CRITICAL: Failed to fetch chunk {from_str} to {to_str} after 3 retries. Halting historical sync.", "ERROR")
+                historical_sync_complete = False
+                break
+
 
     # 5. Fetch Outstandings
     log("  Fetching outstandings...")
@@ -475,27 +513,13 @@ def sync_company(sb, company_name: str):
                 time.sleep(RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60)
 
     # 6. Reconciliation check
-    log("  Running reconciliation check...")
+    log("  Reconciliation check skipped (incompatible with chunked/incremental sync).")
     reconciliation_status = "SKIPPED"
-    reconciliation_variance = 0.0
-    try:
-        db_count_res = sb.table("vouchers").select("id", count="exact").eq("company_id", company_id).eq("is_deleted", False).execute()
-        db_count = db_count_res.count or 0
-        tally_count = len(vouchers_raw) if vouchers_xml else 0
-        variance = abs(tally_count - db_count)
-        reconciliation_variance = float(variance)
-        if variance <= 5:
-            reconciliation_status = "PASSED"
-            log(f"  Reconciliation PASSED: Tally={tally_count}, DB={db_count}")
-        else:
-            reconciliation_status = "FAILED"
-            log(f"  Reconciliation FAILED: Tally={tally_count}, DB={db_count}, Variance={variance}", "WARN")
-    except Exception as e:
-        log(f"  Reconciliation error: {e}", "WARN")
-        reconciliation_status = "ERROR"
 
     # 7. Update checkpoint
-    if max_alter_id > last_alter_id:
+    if last_alter_id == 0 and not historical_sync_complete:
+        log("  Historical sync was aborted due to errors. ALTERID checkpoint will NOT be updated.", "WARN")
+    elif max_alter_id > last_alter_id:
         update_checkpoint(sb, company_id, max_alter_id, sync_id)
         log(f"  Checkpoint updated to ALTERID={max_alter_id}")
 
@@ -537,7 +561,7 @@ def sync_job():
 
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
     open_companies = get_open_companies()
-    target_company = "SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)"
+    target_company = "SMRIDHI SPONGE LIMITED"
     
     # Check if our target company is open
     ssl_open = [c for c in open_companies if target_company.lower() in c.lower()]
@@ -552,6 +576,9 @@ def sync_job():
         sync_company(sb, ssl_open[0])
     except Exception as e:
         log(f"FATAL sync failure for {ssl_open[0]}: {e}\n{traceback.format_exc()}", "ERROR")
+
+    # Run cleanup of old XML files to prevent disk exhaustion
+    cleanup_old_archives(days_to_keep=7)
 
     log(f"=== DAEMON RUN COMPLETE ===\n")
     _sync_running = False
