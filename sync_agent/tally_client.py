@@ -202,9 +202,36 @@ class TallyClient:
             <BODY>
                 <EXPORTDATA>
                     <REQUESTDESC>
-                        <REPORTNAME>Profit &amp; Loss A/c</REPORTNAME>
+                        <REPORTNAME>Profit and Loss</REPORTNAME>
                         <STATICVARIABLES>
                             <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                            <EXPLODEFLAG>Yes</EXPLODEFLAG>
+                            {f'<SVFROMDATE>{from_date}</SVFROMDATE>' if from_date else ''}
+                            {f'<SVTODATE>{to_date}</SVTODATE>' if to_date else ''}
+                        </STATICVARIABLES>
+                    </REQUESTDESC>
+                </EXPORTDATA>
+            </BODY>
+        </ENVELOPE>
+        """
+        return self._send_request(xml_request)
+
+    def export_balance_sheet(self, from_date: str = None, to_date: str = None):
+        """
+        Request Balance Sheet report.
+        """
+        xml_request = f"""
+        <ENVELOPE>
+            <HEADER>
+                <TALLYREQUEST>Export Data</TALLYREQUEST>
+            </HEADER>
+            <BODY>
+                <EXPORTDATA>
+                    <REQUESTDESC>
+                        <REPORTNAME>Balance Sheet</REPORTNAME>
+                        <STATICVARIABLES>
+                            <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                            <EXPLODEFLAG>Yes</EXPLODEFLAG>
                             {f'<SVFROMDATE>{from_date}</SVFROMDATE>' if from_date else ''}
                             {f'<SVTODATE>{to_date}</SVTODATE>' if to_date else ''}
                         </STATICVARIABLES>
@@ -448,6 +475,75 @@ class TallyClient:
             traceback.print_exc()
         return stock_items
 
+    def parse_profit_and_loss(self, xml_response):
+        """Parse Profit & Loss data to extract top-level KPIs and exploded child ledgers."""
+        data = {}
+        data['Expense Breakdown'] = {}
+        if not xml_response: return data
+        try:
+            cleaned_xml = clean_xml(xml_response)
+            root = ET.fromstring(cleaned_xml)
+            children = list(root)
+            current_group = None
+            for i, node in enumerate(children):
+                if node.tag == 'DSPACCNAME':
+                    name = node.findtext('DSPDISPNAME')
+                    if name:
+                        name = name.strip()
+                        # The next sibling should be PLAMT
+                        if i + 1 < len(children) and children[i+1].tag == 'PLAMT':
+                            current_group = name
+                            amt_node = children[i+1]
+                            main_amt = amt_node.findtext('BSMAINAMT')
+                            sub_amt = amt_node.findtext('PLSUBAMT')
+                            val_str = main_amt if (main_amt and main_amt.strip()) else sub_amt
+                            if val_str and val_str.strip():
+                                val_clean = re.sub(r'[^0-9.\-]', '', val_str.split()[0])
+                                data[name] = abs(float(val_clean)) if val_clean else 0.0
+                elif node.tag == 'BSNAME':
+                    child_name_node = node.find('.//DSPDISPNAME')
+                    if child_name_node is not None and child_name_node.text:
+                        child_name = child_name_node.text.strip()
+                        if i + 1 < len(children) and children[i+1].tag == 'BSAMT':
+                            amt_node = children[i+1]
+                            main_amt = amt_node.findtext('BSMAINAMT')
+                            sub_amt = amt_node.findtext('BSSUBAMT')
+                            val_str = main_amt if (main_amt and main_amt.strip()) else sub_amt
+                            if val_str and val_str.strip():
+                                val_clean = re.sub(r'[^0-9.\-]', '', val_str.split()[0])
+                                val = abs(float(val_clean)) if val_clean else 0.0
+                                if current_group and 'Expense' in current_group:
+                                    data['Expense Breakdown'][child_name] = data['Expense Breakdown'].get(child_name, 0) + val
+        except Exception as e:
+            print(f"Failed to parse PnL XML: {e}")
+        return data
+
+    def parse_balance_sheet(self, xml_response):
+        """Parse Balance Sheet data to extract top-level KPIs."""
+        data = {}
+        if not xml_response: return data
+        try:
+            cleaned_xml = clean_xml(xml_response)
+            root = ET.fromstring(cleaned_xml)
+            children = list(root)
+            for i, node in enumerate(children):
+                if node.tag == 'BSNAME':
+                    name_node = node.find('DSPACCNAME')
+                    if name_node is not None:
+                        name = name_node.findtext('DSPDISPNAME')
+                        if name:
+                            name = name.strip()
+                            if i + 1 < len(children) and children[i+1].tag == 'BSAMT':
+                                amt_node = children[i+1]
+                                main_amt = amt_node.findtext('BSMAINAMT')
+                                sub_amt = amt_node.findtext('BSSUBAMT')
+                                val_str = main_amt if (main_amt and main_amt.strip()) else sub_amt
+                                if val_str and val_str.strip():
+                                    val_clean = re.sub(r'[^0-9.\-]', '', val_str.split()[0])
+                                    data[name] = abs(float(val_clean)) if val_clean else 0.0
+        except Exception as e:
+            print(f"Failed to parse Balance Sheet XML: {e}")
+        return data
 
     def parse_vouchers(self, xml_response):
         """Parse voucher data from Tally XML response."""

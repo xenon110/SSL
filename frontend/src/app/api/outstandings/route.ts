@@ -19,7 +19,6 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const groupFilter = searchParams.get('group'); // 'receivable' or 'payable'
-    const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
     const cookieStore = await cookies();
@@ -32,20 +31,26 @@ export async function GET(request: Request) {
       return NextResponse.json(getEmptyOutstandingsState());
     }
 
-    // 1. Fetch Outstanding Bills
+    // 1. Fetch from Materialized View (Pre-calculated in PostgreSQL)
     let query = supabase
-      .from('outstanding_bills')
+      .from('mv_party_outstandings')
       .select('*')
       .eq('company_name', companyName);
-      
-    if (endDate) query = query.lte('bill_date', endDate);
       
     if (groupFilter) {
       query = query.eq('party_group', groupFilter);
     }
     
-    const { data: bills, error: billsError } = await fetchAllData(query);
-    if (billsError) throw billsError;
+    // Note: Filtering by endDate on a materialized view isn't perfect unless the MV tracks bills individually. 
+    // If exact point-in-time filtering is required, a SQL function (RPC) should be used.
+    // For now, we return the pre-calculated latest data.
+    
+    const { data: mvData, error: mvError } = await fetchAllData(query);
+    if (mvError) {
+        // Fallback or handle error. If the MV doesn't exist yet, this will fail.
+        console.error('Materialized view fetch error. Ensure mv_party_outstandings is created:', mvError);
+        throw mvError;
+    }
 
     // 2. Fetch Ledgers to get credit limits, contact info, etc.
     const { data: ledgers, error: ledgersError } = await supabase
@@ -59,18 +64,6 @@ export async function GET(request: Request) {
       });
     }
 
-    const parseLocalDate = (dateStr: string) => {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-      }
-      return new Date(dateStr);
-    };
-
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const todayTime = today.getTime();
-
     // Process data
     const receivables: any[] = [];
     const payables: any[] = [];
@@ -81,104 +74,48 @@ export async function GET(request: Request) {
     let overduePayables = 0;
     let asOnDate: string | null = null;
 
-    // Helper to calculate ageing bucket
-    const getAgeBucket = (dueDateStr: string | null) => {
-      if (!dueDateStr) return 'Not Due';
-      const dueTime = parseLocalDate(dueDateStr).getTime();
-      if (dueTime >= todayTime) return 'Not Due'; // Not overdue yet
-      const diffDays = Math.floor((todayTime - dueTime) / (1000 * 60 * 60 * 24));
+    (mvData || []).forEach(row => {
+      const party = row.party_ledger;
+      const ledInfo = ledgerMap[party] || {};
       
-      if (diffDays <= 30) return '0-30';
-      if (diffDays <= 60) return '31-60';
-      if (diffDays <= 90) return '61-90';
-      return '90+';
-    };
-
-    const partySummary: Record<string, any> = {};
-
-    bills?.forEach(bill => {
-      const pendingVal = Number(bill.pending_amount) || 0;
-      if (pendingVal === 0) return;
-      
-      // Since database values are already normalized during sync, read directly
-      const amt = pendingVal;
-      
-      if (!asOnDate && bill.as_on_date) {
-        asOnDate = bill.as_on_date;
-      }
-
-      const isOverdue = bill.due_date && parseLocalDate(bill.due_date).getTime() < todayTime;
-      const ageBucket = getAgeBucket(bill.due_date);
-      
-      const party = bill.party_ledger;
-      if (!partySummary[party]) {
-        const ledInfo = ledgerMap[party] || {};
-        partySummary[party] = {
-          name: party,
-          group: bill.party_group,
-          parentGroup: ledInfo.parent_group || (bill.party_group === 'receivable' ? 'Sundry Debtors' : 'Sundry Creditors'),
-          totalPending: 0,
-          totalOverdue: 0,
-          advances: 0,
-          onAccount: 0,
-          oldestBillDays: 0,
-          creditLimit: ledInfo.credit_limit || 0,
-          creditDays: ledInfo.credit_days || 0,
-          phone: ledInfo.phone || '',
-          email: ledInfo.email || '',
-          bills: [],
-          buckets: { 'Not Due': 0, '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 }
-        };
+      if (!asOnDate && row.as_on_date) {
+        asOnDate = row.as_on_date;
       }
       
-      const ps = partySummary[party];
-      
-      if (amt < 0 || bill.bill_type === 'advance') {
-        ps.advances += Math.abs(amt);
-        ps.totalPending -= Math.abs(amt);
-      } 
-      else if (bill.bill_type === 'on_account') {
-        ps.onAccount += amt;
-        ps.totalPending += amt;
-      } 
-      else {
-        ps.totalPending += amt;
-        if (isOverdue) {
-          ps.totalOverdue += amt;
-          const diffDays = Math.floor((todayTime - new Date(bill.due_date).getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays > ps.oldestBillDays) {
-            ps.oldestBillDays = diffDays;
-          }
+      const ps = {
+        name: party,
+        group: row.party_group,
+        parentGroup: ledInfo.parent_group || (row.party_group === 'receivable' ? 'Sundry Debtors' : 'Sundry Creditors'),
+        totalPending: Number(row.total_pending) || 0,
+        totalOverdue: Number(row.total_overdue) || 0,
+        advances: Number(row.advances) || 0,
+        onAccount: Number(row.on_account) || 0,
+        oldestBillDays: Number(row.oldest_bill_days) || 0,
+        creditLimit: ledInfo.credit_limit || 0,
+        creditDays: ledInfo.credit_days || 0,
+        phone: ledInfo.phone || '',
+        email: ledInfo.email || '',
+        bills: [], // Bills are omitted to save memory. Fetch them on-demand via a separate API if needed.
+        buckets: {
+          'Not Due': Number(row.bucket_not_due) || 0,
+          '0-30': Number(row.bucket_0_30) || 0,
+          '31-60': Number(row.bucket_31_60) || 0,
+          '61-90': Number(row.bucket_61_90) || 0,
+          '90+': Number(row.bucket_90_plus) || 0
         }
-        if (ps.buckets[ageBucket] !== undefined) {
-          ps.buckets[ageBucket] += amt;
-        }
-      }
+      };
 
-      ps.bills.push({
-        ...bill,
-        pending_amount: amt, // store normalized amount in bills
-        overdueDays: isOverdue ? Math.floor((todayTime - new Date(bill.due_date).getTime()) / (1000 * 60 * 60 * 24)) : 0
-      });
-      
-      if (bill.party_group === 'receivable') {
-        totalReceivables += amt;
-        if (isOverdue && amt > 0) overdueReceivables += amt;
-      } else {
-        totalPayables += amt;
-        if (isOverdue && amt > 0) overduePayables += amt;
-      }
-    });
-
-    Object.values(partySummary).forEach(ps => {
-      ps.bills.sort((a: any, b: any) => new Date(a.bill_date).getTime() - new Date(b.bill_date).getTime());
-      if (ps.group === 'receivable') {
+      if (row.party_group === 'receivable') {
         receivables.push(ps);
+        totalReceivables += ps.totalPending;
+        overdueReceivables += ps.totalOverdue;
       } else {
         payables.push(ps);
+        totalPayables += ps.totalPending;
+        overduePayables += ps.totalOverdue;
       }
     });
-    
+
     receivables.sort((a, b) => b.totalPending - a.totalPending);
     payables.sort((a, b) => b.totalPending - a.totalPending);
 
@@ -199,3 +136,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch Outstandings data' }, { status: 500 });
   }
 }
+
+export const runtime = 'edge';

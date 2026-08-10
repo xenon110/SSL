@@ -134,3 +134,5 @@ ${schemaInstructions}`;
     return NextResponse.json({ error: 'Failed to generate analysis', details: error.message }, { status: 500 });
   }
 }
+
+export const runtime = 'edge';

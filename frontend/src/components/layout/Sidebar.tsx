@@ -22,19 +22,36 @@ import {
   Receipt,
   Wallet,
   HandCoins,
+  Target,
+  BrainCircuit,
+  LineChart,
+  Bot
 } from "lucide-react";
 
 const navItems = [
-  { title: "Stock Summary", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Sales", href: "/sales", icon: TrendingUp },
-  { title: "Purchases", href: "/purchases", icon: ShoppingCart },
-  { title: "Outstandings", href: "/outstandings", icon: HandCoins },
-  { title: "Cash Flow", href: "/cash-flow", icon: Activity },
-  { title: "Income & Expenses", href: "/pnl", icon: Receipt },
-  { title: "P&L & Balance Sheet", href: "/pnl-balance-sheet", icon: PieChart },
-  { title: "Production", href: "/production", icon: Briefcase },
-  { title: "Compare", href: "/compare", icon: BarChart3 },
-  { title: "Audit (Edit Log)", href: "/audit", icon: ShieldCheck },
+  { title: "AI CFO Chatbot", href: "/ai-cfo", icon: Bot },
+  { title: "Executive Summary", href: "/executive", icon: LayoutDashboard },
+  { title: "Revenue Dashboard", href: "/revenue", icon: TrendingUp },
+  { title: "Profitability Dashboard", href: "/profitability", icon: PieChart },
+  { title: "Cash Flow Dashboard", href: "/cash-flow", icon: Activity },
+  { title: "Receivables Dashboard", href: "/receivables", icon: HandCoins },
+  { title: "Payables Dashboard", href: "/payables", icon: CreditCard },
+  { title: "Bank Dashboard", href: "/bank", icon: Banknote },
+  { title: "Expense Dashboard", href: "/expense", icon: Receipt },
+  { title: "Inventory Dashboard", href: "/inventory", icon: Package },
+  { title: "Sales Dashboard", href: "/sales", icon: ShoppingCart },
+  { title: "Purchase Dashboard", href: "/purchases", icon: ShoppingCart },
+  { title: "Tax & Compliance", href: "/compliance", icon: ShieldCheck },
+  { title: "Financial Ratios", href: "/ratios", icon: BarChart3 },
+  { title: "Balance Sheet Snapshot", href: "/balance-sheet", icon: FileText },
+  { title: "Working Capital", href: "/working-capital", icon: Wallet },
+  { title: "Budget vs Actual", href: "/budget", icon: Target },
+  { title: "Customer Analytics", href: "/customer-analytics", icon: Users },
+  { title: "Vendor Analytics", href: "/vendor-analytics", icon: Briefcase },
+  { title: "Business Alerts", href: "/alerts", icon: AlertTriangle },
+  { title: "Forecast Dashboard", href: "/forecast", icon: LineChart },
+  { title: "Investor Dashboard", href: "/investor", icon: PieChart },
+  { title: "Director Decision Panel", href: "/director", icon: BrainCircuit },
   { title: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -51,20 +68,27 @@ export function Sidebar() {
           <p className="text-xs text-muted-foreground mt-1">Financial Intelligence</p>
         </div>
         <ul className="space-y-1 font-medium">
-          {navItems.map((item) => (
-            <li key={item.href}>
+          {navItems.map((item) => {
+            const isAi = item.href === '/ai-cfo';
+            return (
+            <li key={item.href} className={isAi ? "pb-4 border-b border-slate-100 mb-4" : ""}>
               <Link
                 href={item.href}
                 className={cn(
-                  "flex items-center rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground",
-                  pathname === item.href ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                  "flex items-center rounded-lg px-3 py-2 text-sm transition-all",
+                  pathname === item.href 
+                    ? (isAi ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "bg-accent text-accent-foreground")
+                    : (isAi 
+                        ? "bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 border border-indigo-100/50" 
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground")
                 )}
               >
-                <item.icon className="mr-3 h-4 w-4" />
+                <item.icon className={cn("mr-3 h-4 w-4", isAi && pathname !== item.href ? "text-indigo-600" : "")} />
                 {item.title}
+                {isAi && <span className="ml-auto flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>}
               </Link>
             </li>
-          ))}
+          )})}
         </ul>
       </div>
     </aside>

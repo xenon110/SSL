@@ -1,41 +1,60 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from "react";
-import { GenericDashboardView } from "@/components/layout/GenericDashboardView";
+import React, { useEffect, useState } from "react";
+import { GenericDashboardView, GenericDashboardSkeleton } from "@/components/layout/GenericDashboardView";
+import { RefreshCw, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export default function Page() {
+export default function WorkingCapitalPage() {
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMetrics = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/universal-metrics?type=working-capital');
+      const json = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to fetch data");
+      }
+      
+      setData(json.data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const res = await fetch("/api/working-capital");
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        }
-      } catch (err) {
-        console.error("Failed to load working capital:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
+    fetchMetrics();
   }, []);
 
-  if (loading) {
+  if (isLoading) return <GenericDashboardSkeleton />;
+
+  if (error || !data) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+      <div className="flex flex-col items-center justify-center h-[70vh] text-center p-6">
+        <div className="bg-red-50 p-6 rounded-2xl max-w-md border border-red-100 shadow-sm">
+          <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-slate-900 mb-2">No Live Data Yet</h3>
+          <p className="text-slate-600 mb-6 text-sm">
+            {error || "Your Tally sync agent hasn't pushed the data to the database yet. Please ensure the sync script is running."}
+          </p>
+          <Button onClick={fetchMetrics} className="bg-indigo-600 hover:bg-indigo-700">
+            <RefreshCw className="w-4 h-4 mr-2" /> Check Again
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <GenericDashboardView 
-      title="Working Capital" 
-      data={data || { currentAssets: 0, currentLiabilities: 0, currentRatio: 0 }} 
-    />
+    <div className="p-6 space-y-6">
+      <GenericDashboardView title="Working Capital Dashboard" data={data} />
+    </div>
   );
 }

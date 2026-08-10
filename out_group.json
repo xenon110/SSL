@@ -1,0 +1,4541 @@
+[
+  {
+    "name": "Raw Material",
+    "inQty": 50477.825000000004,
+    "inVal": 704282871.16,
+    "outQty": 38243.344999999994,
+    "outVal": 680904487.14,
+    "items": [
+      {
+        "name": "Iron Ore 5-40",
+        "inQty": 0,
+        "inVal": 133065110.94,
+        "outQty": 0,
+        "outVal": 117822457.94,
+        "unit": "MT"
+      },
+      {
+        "name": "Coal (Dom.)",
+        "inQty": 0,
+        "inVal": 129546492.94,
+        "outQty": 0,
+        "outVal": 149250525.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Coal Imported",
+        "inQty": 5173.74,
+        "inVal": 129546492.94,
+        "outQty": 5598.735,
+        "outVal": 149250525.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Transport Coal (Domestic)",
+        "inQty": 5173.725,
+        "inVal": 129546207.94,
+        "outQty": 5598.735,
+        "outVal": 149250525.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Iron Ore Concentrate",
+        "inQty": 15531.375,
+        "inVal": 65332353.8,
+        "outQty": 10818.15,
+        "outVal": 41906597.4,
+        "unit": "MT"
+      },
+      {
+        "name": "Iron Ore Pellets",
+        "inQty": 8542.445,
+        "inVal": 51912383.8,
+        "outQty": 5409.075,
+        "outVal": 31517198.4,
+        "unit": "MT"
+      },
+      {
+        "name": "Transport Iron Ore (GST)",
+        "inQty": 8533.895,
+        "inVal": 51861810.475,
+        "outQty": 5409.075,
+        "outVal": 31517198.4,
+        "unit": "MT"
+      },
+      {
+        "name": "Coal Primary Screen Shaft : M7",
+        "inQty": 6988.93,
+        "inVal": 13419970,
+        "outQty": 5409.075,
+        "outVal": 10389399,
+        "unit": "MT"
+      },
+      {
+        "name": "Dolomite ( Gst )",
+        "inQty": 8.55,
+        "inVal": 50573.325,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "RAWAL BOLT -M12X90",
+        "inQty": 10,
+        "inVal": 1190,
+        "outQty": 0.5,
+        "outVal": 59.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Transport Coal Imported (GST)",
+        "inQty": 0.015,
+        "inVal": 285,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Iron Ore Fines",
+        "inQty": 515.15,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      }
+    ]
+  },
+  {
+    "name": "Uncategorized",
+    "inQty": 159409.38999999996,
+    "inVal": 245509723.88,
+    "outQty": 172413.099,
+    "outVal": 262375017.18000016,
+    "items": [
+      {
+        "name": "PSC CEMENT",
+        "inQty": 11772.025,
+        "inVal": 67170757.14,
+        "outQty": 19551.185,
+        "outVal": 75442523.04,
+        "unit": "MT"
+      },
+      {
+        "name": "LIQUOR AMMONIA",
+        "inQty": 7880.215,
+        "inVal": 55794755.54,
+        "outQty": 10415.225,
+        "outVal": 65220800.54,
+        "unit": "MT"
+      },
+      {
+        "name": "2827",
+        "inQty": 7876.375,
+        "inVal": 55767399.74,
+        "outQty": 10415.225,
+        "outVal": 65220800.54,
+        "unit": "MT"
+      },
+      {
+        "name": "1513",
+        "inQty": 6988.93,
+        "inVal": 13419970,
+        "outQty": 5409.075,
+        "outVal": 10389399,
+        "unit": "MT"
+      },
+      {
+        "name": "28415090",
+        "inQty": 1000,
+        "inVal": 8250000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "POTASSIUM DICHROMATE AMP",
+        "inQty": 999.945,
+        "inVal": 8249538,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CRE 2-26 (500 ML)",
+        "inQty": 0,
+        "inVal": 7623169.52,
+        "outQty": 0,
+        "outVal": 6389780.735,
+        "unit": "MT"
+      },
+      {
+        "name": "Rubber Sheet 3 mm",
+        "inQty": 0,
+        "inVal": 4969952.17,
+        "outQty": 0,
+        "outVal": 5051232.805,
+        "unit": "MT"
+      },
+      {
+        "name": "V BELT C-185",
+        "inQty": 48100,
+        "inVal": 4598568,
+        "outQty": 49299.5,
+        "outVal": 4691080.835,
+        "unit": "MT"
+      },
+      {
+        "name": "V-Belt C-210",
+        "inQty": 48100,
+        "inVal": 4598568,
+        "outQty": 49299.5,
+        "outVal": 4691080.835,
+        "unit": "MT"
+      },
+      {
+        "name": "321590",
+        "inQty": 2891.81,
+        "inVal": 3126001.6,
+        "outQty": 9135.96,
+        "outVal": 10221722.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Rocket Red Veeto Lnk (1ltr Pack)",
+        "inQty": 2891.81,
+        "inVal": 3126001.6,
+        "outQty": 9135.96,
+        "outVal": 10221722.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal No. 260X300X20",
+        "inQty": 0,
+        "inVal": 2084322.96,
+        "outQty": 0,
+        "outVal": 1122079.86,
+        "unit": "MT"
+      },
+      {
+        "name": "4009",
+        "inQty": 0,
+        "inVal": 371384.17,
+        "outQty": 0,
+        "outVal": 360151.97,
+        "unit": "MT"
+      },
+      {
+        "name": "CRC2 -26",
+        "inQty": 224.8,
+        "inVal": 325960,
+        "outQty": 189.335,
+        "outVal": 274535.75,
+        "unit": "MT"
+      },
+      {
+        "name": "Crc 2-26 500ml",
+        "inQty": 224.8,
+        "inVal": 325960,
+        "outQty": 189.335,
+        "outVal": 274535.75,
+        "unit": "MT"
+      },
+      {
+        "name": "3403",
+        "inQty": 224.8,
+        "inVal": 236040,
+        "outQty": 189.335,
+        "outVal": 198801.75,
+        "unit": "MT"
+      },
+      {
+        "name": "ANTISEIZE COMPOUND",
+        "inQty": 224.635,
+        "inVal": 235866.75,
+        "outQty": 189.335,
+        "outVal": 198801.75,
+        "unit": "MT"
+      },
+      {
+        "name": "G.I BOLT WITH NUT M20X150",
+        "inQty": 0,
+        "inVal": 191265,
+        "outQty": 0,
+        "outVal": 14961.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Group Block 36\"x6 (1 Pc)",
+        "inQty": 0,
+        "inVal": 180485,
+        "outQty": 0,
+        "outVal": 112996,
+        "unit": "MT"
+      },
+      {
+        "name": "Tingle Plate 36\"x6(1 Pcs)",
+        "inQty": 1782.5,
+        "inVal": 180485,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "TOGGLE PLATE 36*8 J/C",
+        "inQty": 1782.5,
+        "inVal": 180485,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CADMIUM COATED BOLT NUT WASHER  M16X65",
+        "inQty": 137.5,
+        "inVal": 176000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Circlip",
+        "inQty": 137.5,
+        "inVal": 176000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "6601",
+        "inQty": 6,
+        "inVal": 144000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Safty Shoes 9 No",
+        "inQty": 0,
+        "inVal": 144000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "G.U. Bamboo",
+        "inQty": 6,
+        "inVal": 144000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CLEAN MASTER ENGINE AND GENSET PARTS CLEANER",
+        "inQty": 600,
+        "inVal": 127116,
+        "outQty": 7,
+        "outVal": 1483.28,
+        "unit": "MT"
+      },
+      {
+        "name": "N.C Thinner",
+        "inQty": 600,
+        "inVal": 127116,
+        "outQty": 7,
+        "outVal": 1483.28,
+        "unit": "MT"
+      },
+      {
+        "name": "Painting Oil",
+        "inQty": 600,
+        "inVal": 127116,
+        "outQty": 7,
+        "outVal": 1483.28,
+        "unit": "MT"
+      },
+      {
+        "name": "PAD PRE FILTER",
+        "inQty": 0,
+        "inVal": 109000,
+        "outQty": 0,
+        "outVal": 19000,
+        "unit": "MT"
+      },
+      {
+        "name": "R.O. PUMP",
+        "inQty": 2.5,
+        "inVal": 90000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SEDIMENT FILTER",
+        "inQty": 2.5,
+        "inVal": 90000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SDS- MAX POINTED 400MM",
+        "inQty": 250,
+        "inVal": 87750,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Cable Gland Heavey Duty",
+        "inQty": 0,
+        "inVal": 79699.5,
+        "outQty": 0,
+        "outVal": 82519.4,
+        "unit": "MT"
+      },
+      {
+        "name": "RUBBER HOSE PIPE WIRE",
+        "inQty": 630,
+        "inVal": 73080,
+        "outQty": 398,
+        "outVal": 41920,
+        "unit": "MT"
+      },
+      {
+        "name": "Set of Hose & Clamp",
+        "inQty": 630,
+        "inVal": 73080,
+        "outQty": 398,
+        "outVal": 41920,
+        "unit": "MT"
+      },
+      {
+        "name": "CHISEL 12\"X6\"X1.25 FLAT",
+        "inQty": 0,
+        "inVal": 71780,
+        "outQty": 0,
+        "outVal": 18720,
+        "unit": "MT"
+      },
+      {
+        "name": "4408",
+        "inQty": 0,
+        "inVal": 66580,
+        "outQty": 0,
+        "outVal": 55856.25,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD PIPE 40/303675",
+        "inQty": 364,
+        "inVal": 65884,
+        "outQty": 4,
+        "outVal": 700,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD PIPE 612/25000",
+        "inQty": 364,
+        "inVal": 65884,
+        "outQty": 4,
+        "outVal": 700,
+        "unit": "MT"
+      },
+      {
+        "name": "4830",
+        "inQty": 360,
+        "inVal": 65700,
+        "outQty": 328.25,
+        "outVal": 54161.25,
+        "unit": "MT"
+      },
+      {
+        "name": "Filter Paper 30mmx20mm",
+        "inQty": 360,
+        "inVal": 65700,
+        "outQty": 328.25,
+        "outVal": 54161.25,
+        "unit": "MT"
+      },
+      {
+        "name": "Fuse for Sfu",
+        "inQty": 0,
+        "inVal": 61480,
+        "outQty": 0,
+        "outVal": 29985,
+        "unit": "MT"
+      },
+      {
+        "name": "RFS 2008 SINGLE CYCLINDER FLOOR HING  80KG",
+        "inQty": 97.5,
+        "inVal": 55575,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "1/2\" 45H 800MM + FITTING",
+        "inQty": 105,
+        "inVal": 53860.17,
+        "outQty": 302.5,
+        "outVal": 119041.35,
+        "unit": "MT"
+      },
+      {
+        "name": "3/4 R, 200mm Long with Fitting",
+        "inQty": 105,
+        "inVal": 53860.17,
+        "outQty": 240,
+        "outVal": 113416.35,
+        "unit": "MT"
+      },
+      {
+        "name": "Gas Cutting Hose Pipe Blue",
+        "inQty": 105,
+        "inVal": 53860.17,
+        "outQty": 240,
+        "outVal": 113416.35,
+        "unit": "MT"
+      },
+      {
+        "name": "8211",
+        "inQty": 150,
+        "inVal": 53250,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "TAPARIA KNIFE BLADE",
+        "inQty": 150,
+        "inVal": 53250,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "V Belt C-67",
+        "inQty": 0,
+        "inVal": 52824.51,
+        "outQty": 0,
+        "outVal": 16338.01,
+        "unit": "MT"
+      },
+      {
+        "name": "OVER LOAD REALLY RANGE-:20-33AMP",
+        "inQty": 9,
+        "inVal": 51660,
+        "outQty": 5.5,
+        "outVal": 29985,
+        "unit": "MT"
+      },
+      {
+        "name": "OVER LOAD REALLY RANGE:-24-32 AMP",
+        "inQty": 9,
+        "inVal": 51660,
+        "outQty": 5.5,
+        "outVal": 29985,
+        "unit": "MT"
+      },
+      {
+        "name": "DIGITAL OVER VOLTAGE RELAY 230 VAC",
+        "inQty": 0,
+        "inVal": 49000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Dol Starter Range 14-23 Amp",
+        "inQty": 100,
+        "inVal": 49000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Dol Starter Range-4 to 6.3 Amp",
+        "inQty": 100,
+        "inVal": 49000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CHISEL 18\"",
+        "inQty": 620,
+        "inVal": 43710,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CHISEL 18\"X6\"X1.25 FLAT",
+        "inQty": 620,
+        "inVal": 43710,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 30*40*5,",
+        "inQty": 4,
+        "inVal": 41800,
+        "outQty": 0.5,
+        "outVal": 5225,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 30-40-7",
+        "inQty": 4,
+        "inVal": 41800,
+        "outQty": 0.5,
+        "outVal": 5225,
+        "unit": "MT"
+      },
+      {
+        "name": "Conveyor Belt 4 Ply",
+        "inQty": 210,
+        "inVal": 39900,
+        "outQty": 125,
+        "outVal": 19510,
+        "unit": "MT"
+      },
+      {
+        "name": "Conveyor Belt (500mm, 3 Ply, Thk- 10mm)",
+        "inQty": 210,
+        "inVal": 39900,
+        "outQty": 125,
+        "outVal": 19510,
+        "unit": "MT"
+      },
+      {
+        "name": "Conveyor Belt (500mm x 4ply x 12mm) M-24",
+        "inQty": 180,
+        "inVal": 37440,
+        "outQty": 71.5,
+        "outVal": 13446,
+        "unit": "MT"
+      },
+      {
+        "name": "Conveyor Belt (550x4plyx10mm) M-24",
+        "inQty": 180,
+        "inVal": 37440,
+        "outQty": 71.5,
+        "outVal": 13446,
+        "unit": "MT"
+      },
+      {
+        "name": "HT Hex Bolt Nut M8x40",
+        "inQty": 0,
+        "inVal": 36902,
+        "outQty": 0,
+        "outVal": 13666,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD HOSE PIPE 3/8\"R1 1650MM",
+        "inQty": 210,
+        "inVal": 35700,
+        "outQty": 195.5,
+        "outVal": 27041,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD HOSE PIPE 3/8\"R2 270MM",
+        "inQty": 210,
+        "inVal": 35700,
+        "outQty": 195.5,
+        "outVal": 27041,
+        "unit": "MT"
+      },
+      {
+        "name": "Belt Cutter Knife",
+        "inQty": 100,
+        "inVal": 34500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "KNIFE BLADE",
+        "inQty": 100,
+        "inVal": 34500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD HOSE PIPR 5/8\"R2 2700MM",
+        "inQty": 182,
+        "inVal": 32760,
+        "outQty": 128,
+        "outVal": 22587.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD HOSE PIPR 611/01200",
+        "inQty": 182,
+        "inVal": 32760,
+        "outQty": 128,
+        "outVal": 22587.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Hydraulic Hose Pipe",
+        "inQty": 182,
+        "inVal": 32760,
+        "outQty": 147.3,
+        "outVal": 26045.25,
+        "unit": "MT"
+      },
+      {
+        "name": "Injector Replece New",
+        "inQty": 182,
+        "inVal": 32760,
+        "outQty": 147.3,
+        "outVal": 26045.25,
+        "unit": "MT"
+      },
+      {
+        "name": "MERCURIC CHLORIDE @ 5%",
+        "inQty": 3.84,
+        "inVal": 27355.8,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Bend 2\"",
+        "inQty": 0,
+        "inVal": 26625,
+        "outQty": 0,
+        "outVal": 15300,
+        "unit": "MT"
+      },
+      {
+        "name": "MS FORGE UNION 1*1/4\"",
+        "inQty": 7.5,
+        "inVal": 26625,
+        "outQty": 4.5,
+        "outVal": 15300,
+        "unit": "MT"
+      },
+      {
+        "name": "MS FORGE UNION 3/4\"",
+        "inQty": 7.5,
+        "inVal": 26625,
+        "outQty": 4.5,
+        "outVal": 15300,
+        "unit": "MT"
+      },
+      {
+        "name": "9612",
+        "inQty": 0,
+        "inVal": 24947.5,
+        "outQty": 0,
+        "outVal": 27272.5,
+        "unit": "MT"
+      },
+      {
+        "name": "TROLLEY WHEEL 6\"",
+        "inQty": 37,
+        "inVal": 21090,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "WINDOW HANDLE",
+        "inQty": 37,
+        "inVal": 21090,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "3 POLE PANNEL TERMINAL(400A X 3 WAY)",
+        "inQty": 0,
+        "inVal": 20750,
+        "outQty": 0,
+        "outVal": 20750,
+        "unit": "MT"
+      },
+      {
+        "name": "SOLENOID VALVE",
+        "inQty": 20,
+        "inVal": 19000,
+        "outQty": 20,
+        "outVal": 19000,
+        "unit": "MT"
+      },
+      {
+        "name": "Solonoied Valve(As Per Sample 230v Ac)",
+        "inQty": 20,
+        "inVal": 19000,
+        "outQty": 20,
+        "outVal": 19000,
+        "unit": "MT"
+      },
+      {
+        "name": "PVC Foot Valve Adapter 2\"",
+        "inQty": 0,
+        "inVal": 17166.5,
+        "outQty": 0,
+        "outVal": 2000,
+        "unit": "MT"
+      },
+      {
+        "name": "BEARING 6303-2Z",
+        "inQty": 45.175,
+        "inVal": 17166.5,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "BEARING  6307-2Z",
+        "inQty": 45.175,
+        "inVal": 17166.5,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HARD WOOD RUNNER",
+        "inQty": 5.5,
+        "inVal": 16864.65,
+        "outQty": 4,
+        "outVal": 12803.335,
+        "unit": "MT"
+      },
+      {
+        "name": "HARD WOOD SIZE 5X7X8X4",
+        "inQty": 5.5,
+        "inVal": 16864.65,
+        "outQty": 4,
+        "outVal": 12803.335,
+        "unit": "MT"
+      },
+      {
+        "name": "Hard Wood Size (6\"x4\"x3\"=50pc)",
+        "inQty": 5.5,
+        "inVal": 16864.65,
+        "outQty": 4,
+        "outVal": 12803.335,
+        "unit": "MT"
+      },
+      {
+        "name": "Slip Seal Grease 680 HT",
+        "inQty": 0.5,
+        "inVal": 16000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Ultra Coolent",
+        "inQty": 0.5,
+        "inVal": 16000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "WD -40 420ML",
+        "inQty": 0.5,
+        "inVal": 16000,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Hard Wood Size (7'x8\"x4\")",
+        "inQty": 52,
+        "inVal": 15340,
+        "outQty": 40.5,
+        "outVal": 12272.5,
+        "unit": "MT"
+      },
+      {
+        "name": "WOODEN BATTEN",
+        "inQty": 52,
+        "inVal": 15340,
+        "outQty": 40.5,
+        "outVal": 12272.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Wooden Gutka",
+        "inQty": 52,
+        "inVal": 15340,
+        "outQty": 40.5,
+        "outVal": 12272.5,
+        "unit": "MT"
+      },
+      {
+        "name": "8404",
+        "inQty": 26.5,
+        "inVal": 15105,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Collecting Electrodes",
+        "inQty": 26.5,
+        "inVal": 15105,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SFT PROT SLEEVE\\32\\MOV\\CI",
+        "inQty": 0.5,
+        "inVal": 14725,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "S.P.Sleeve  KSB Pump Model : ETANORM G 150-125-250",
+        "inQty": 0.5,
+        "inVal": 14725,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Submersible Pump",
+        "inQty": 0.5,
+        "inVal": 14725,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Towel Ring",
+        "inQty": 22,
+        "inVal": 12540,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Towel Ring Hindware",
+        "inQty": 22,
+        "inVal": 12540,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Switch 16 Port",
+        "inQty": 15.25,
+        "inVal": 9912.5,
+        "outQty": 12,
+        "outVal": 8400,
+        "unit": "MT"
+      },
+      {
+        "name": "PENDRIVE 32 GB",
+        "inQty": 15.25,
+        "inVal": 9912.5,
+        "outQty": 12,
+        "outVal": 8400,
+        "unit": "MT"
+      },
+      {
+        "name": "QUICKHEAL TS RENEWALTS1",
+        "inQty": 15.25,
+        "inVal": 9912.5,
+        "outQty": 12,
+        "outVal": 8400,
+        "unit": "MT"
+      },
+      {
+        "name": "INDICATOR LAMP YELLOW",
+        "inQty": 2,
+        "inVal": 9820,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MCB 6 AMP SP",
+        "inQty": 2,
+        "inVal": 9820,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MCB Channel",
+        "inQty": 2,
+        "inVal": 9820,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Flat Chisel 18\"+6\"x1.1/4\"(24\")",
+        "inQty": 1,
+        "inVal": 9350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "FRONT HEAD BOLT NUT",
+        "inQty": 1,
+        "inVal": 9350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HT BOLT M20X80",
+        "inQty": 6,
+        "inVal": 9300,
+        "outQty": 4.5,
+        "outVal": 6435,
+        "unit": "MT"
+      },
+      {
+        "name": "HT Bolt M24x50",
+        "inQty": 6,
+        "inVal": 9300,
+        "outQty": 4.5,
+        "outVal": 6435,
+        "unit": "MT"
+      },
+      {
+        "name": "CASING BIT 1/2\"",
+        "inQty": 1,
+        "inVal": 7525,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "8414",
+        "inQty": 0,
+        "inVal": 6945,
+        "outQty": 0,
+        "outVal": 3727,
+        "unit": "MT"
+      },
+      {
+        "name": "HWR DOR TEE 4\"",
+        "inQty": 0.5,
+        "inVal": 6500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HWR TEE 3\"",
+        "inQty": 0.5,
+        "inVal": 6500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HT HEX BOLT & S WASHER F.T M16X80",
+        "inQty": 10,
+        "inVal": 6500,
+        "outQty": 7.5,
+        "outVal": 6387.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HT HEX BOLT & WASHER FT. M16X50",
+        "inQty": 10,
+        "inVal": 6500,
+        "outQty": 7.5,
+        "outVal": 6387.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Welding Rod C.I 4MM  2kg",
+        "inQty": 380,
+        "inVal": 6460,
+        "outQty": 270.5,
+        "outVal": 4598.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Welding Rod LH 106(4.00x350mm)",
+        "inQty": 380,
+        "inVal": 6460,
+        "outQty": 270.5,
+        "outVal": 4598.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Welding Rod Lotherme-468",
+        "inQty": 380,
+        "inVal": 6460,
+        "outQty": 270.5,
+        "outVal": 4598.5,
+        "unit": "MT"
+      },
+      {
+        "name": "100 TPD Cooler Suport Roller with Shaft",
+        "inQty": 0,
+        "inVal": 5925,
+        "outQty": 0,
+        "outVal": 5770.1,
+        "unit": "MT"
+      },
+      {
+        "name": "84123100",
+        "inQty": 0,
+        "inVal": 5214.3,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Pneumatic Cylinder (NOS) for 100TPD COOLER",
+        "inQty": 15,
+        "inVal": 5214.3,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Pneumatic Cylinder (NOS) for 100 TPD KILN",
+        "inQty": 15,
+        "inVal": 5214.3,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Open Spanner 18x19",
+        "inQty": 53,
+        "inVal": 5070,
+        "outQty": 8.5,
+        "outVal": 715,
+        "unit": "MT"
+      },
+      {
+        "name": "8412",
+        "inQty": 8.5,
+        "inVal": 4845,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Discharge Electrodes",
+        "inQty": 8.5,
+        "inVal": 4845,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SS WELDING ROD 4.00X350MM (310)",
+        "inQty": 33,
+        "inVal": 4620,
+        "outQty": 13,
+        "outVal": 1820,
+        "unit": "MT"
+      },
+      {
+        "name": "HT BOLT NUT 30X100MM",
+        "inQty": 7.5,
+        "inVal": 4365,
+        "outQty": 6,
+        "outVal": 3492,
+        "unit": "MT"
+      },
+      {
+        "name": "Ht Bolt Nut 8x30mm",
+        "inQty": 7.5,
+        "inVal": 4365,
+        "outQty": 6,
+        "outVal": 3492,
+        "unit": "MT"
+      },
+      {
+        "name": "V BELT C-68",
+        "inQty": 10,
+        "inVal": 4180.51,
+        "outQty": 20,
+        "outVal": 8361.01,
+        "unit": "MT"
+      },
+      {
+        "name": "V Belt C78",
+        "inQty": 10,
+        "inVal": 4180.51,
+        "outQty": 20,
+        "outVal": 8361.01,
+        "unit": "MT"
+      },
+      {
+        "name": "V- Belt C-88",
+        "inQty": 10,
+        "inVal": 4180.51,
+        "outQty": 20,
+        "outVal": 8361.01,
+        "unit": "MT"
+      },
+      {
+        "name": "MOTOR CHANGE",
+        "inQty": 1,
+        "inVal": 4125,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MOTOR HOUSING  BEARING  SIZE",
+        "inQty": 1,
+        "inVal": 4125,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CONCRETE BIT 12 MM",
+        "inQty": 87.5,
+        "inVal": 3675,
+        "outQty": 136.55,
+        "outVal": 5735.1,
+        "unit": "MT"
+      },
+      {
+        "name": "DRILL BIT",
+        "inQty": 87.5,
+        "inVal": 3675,
+        "outQty": 136.55,
+        "outVal": 5735.1,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 30-47-6",
+        "inQty": 5,
+        "inVal": 3600,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 30x38x7",
+        "inQty": 5,
+        "inVal": 3600,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "WATCH CLASS 75\"",
+        "inQty": 0,
+        "inVal": 3375,
+        "outQty": 0,
+        "outVal": 1125,
+        "unit": "MT"
+      },
+      {
+        "name": "Grinding Mechine",
+        "inQty": 37.5,
+        "inVal": 3225,
+        "outQty": 18.325,
+        "outVal": 1556.8,
+        "unit": "MT"
+      },
+      {
+        "name": "GUM BOOT",
+        "inQty": 37.5,
+        "inVal": 3225,
+        "outQty": 18.325,
+        "outVal": 1556.8,
+        "unit": "MT"
+      },
+      {
+        "name": "Pin Bush Bolt Nut 8x55mm(Damru Type)",
+        "inQty": 12.5,
+        "inVal": 3200,
+        "outQty": 1,
+        "outVal": 256,
+        "unit": "MT"
+      },
+      {
+        "name": "PIN BUSH COUPLING BOLT RB-116",
+        "inQty": 12.5,
+        "inVal": 3200,
+        "outQty": 1,
+        "outVal": 256,
+        "unit": "MT"
+      },
+      {
+        "name": "Contractor MNX-18 110V",
+        "inQty": 7.5,
+        "inVal": 3150,
+        "outQty": 1,
+        "outVal": 430,
+        "unit": "MT"
+      },
+      {
+        "name": "Contractor MNX-50",
+        "inQty": 7.5,
+        "inVal": 3150,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CONTRACTOR MNX-50 & 70",
+        "inQty": 7.5,
+        "inVal": 3150,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Measuring Tape(3 Mtr)",
+        "inQty": 90,
+        "inVal": 3150,
+        "outQty": 88,
+        "outVal": 3280,
+        "unit": "MT"
+      },
+      {
+        "name": "Scale",
+        "inQty": 90,
+        "inVal": 3150,
+        "outQty": 88,
+        "outVal": 3280,
+        "unit": "MT"
+      },
+      {
+        "name": "Pin Bush Bolt 10x65mm",
+        "inQty": 12.5,
+        "inVal": 3062.5,
+        "outQty": 2.5,
+        "outVal": 465.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Pin Bush Bolt Nut 10x75mm(Damru Type)",
+        "inQty": 12.5,
+        "inVal": 3062.5,
+        "outQty": 2.5,
+        "outVal": 465.5,
+        "unit": "MT"
+      },
+      {
+        "name": "7325",
+        "inQty": 10,
+        "inVal": 2680,
+        "outQty": 5.5,
+        "outVal": 1130,
+        "unit": "MT"
+      },
+      {
+        "name": "SPRINGS",
+        "inQty": 10,
+        "inVal": 2680,
+        "outQty": 5.5,
+        "outVal": 1130,
+        "unit": "MT"
+      },
+      {
+        "name": "OPEN SPANNER 25X28",
+        "inQty": 29,
+        "inVal": 2610,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Open Spanner 36X41",
+        "inQty": 29,
+        "inVal": 2610,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Qrt Rod Length-1000mm",
+        "inQty": 40,
+        "inVal": 2600,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "RING TYPE COPPER LUGS 10 SQ.MM 6MM DIA",
+        "inQty": 40,
+        "inVal": 2600,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "8382",
+        "inQty": 175,
+        "inVal": 2425,
+        "outQty": 75,
+        "outVal": 1501,
+        "unit": "MT"
+      },
+      {
+        "name": "SCREW HP 12X14X25",
+        "inQty": 10,
+        "inVal": 2400,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Screw M5 x 15",
+        "inQty": 10,
+        "inVal": 2400,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "FLAT FILE 12\"",
+        "inQty": 1,
+        "inVal": 2250,
+        "outQty": 0.5,
+        "outVal": 35,
+        "unit": "MT"
+      },
+      {
+        "name": "HAMMER BAT",
+        "inQty": 1,
+        "inVal": 2250,
+        "outQty": 0.5,
+        "outVal": 35,
+        "unit": "MT"
+      },
+      {
+        "name": "6005",
+        "inQty": 22.5,
+        "inVal": 2100,
+        "outQty": 0,
+        "outVal": 199.15,
+        "unit": "MT"
+      },
+      {
+        "name": "WELDING  ROD 3.15 X 450",
+        "inQty": 15,
+        "inVal": 2100,
+        "outQty": 7,
+        "outVal": 980,
+        "unit": "MT"
+      },
+      {
+        "name": "Welding Rod 3.15x450MM",
+        "inQty": 15,
+        "inVal": 2100,
+        "outQty": 7,
+        "outVal": 980,
+        "unit": "MT"
+      },
+      {
+        "name": "WELDING ROD 4.00X450MM(6013)",
+        "inQty": 15,
+        "inVal": 2100,
+        "outQty": 5,
+        "outVal": 700,
+        "unit": "MT"
+      },
+      {
+        "name": "Welding Rod 4.00x450Mm 7018",
+        "inQty": 15,
+        "inVal": 2100,
+        "outQty": 5,
+        "outVal": 700,
+        "unit": "MT"
+      },
+      {
+        "name": "RING SPANNER 10-11",
+        "inQty": 25,
+        "inVal": 2100,
+        "outQty": 27.495,
+        "outVal": 2315.33,
+        "unit": "MT"
+      },
+      {
+        "name": "Smoke Grey Paint",
+        "inQty": 25,
+        "inVal": 2100,
+        "outQty": 27.495,
+        "outVal": 2315.33,
+        "unit": "MT"
+      },
+      {
+        "name": "Volumetric Flask (500ML)",
+        "inQty": 25,
+        "inVal": 2100,
+        "outQty": 13.1,
+        "outVal": 1100.4,
+        "unit": "MT"
+      },
+      {
+        "name": "Weigh Feeder Carrying Idler",
+        "inQty": 25,
+        "inVal": 2100,
+        "outQty": 13.1,
+        "outVal": 1100.4,
+        "unit": "MT"
+      },
+      {
+        "name": "MS PLAIN WASHER M12",
+        "inQty": 15,
+        "inVal": 2065,
+        "outQty": 3.5,
+        "outVal": 477,
+        "unit": "MT"
+      },
+      {
+        "name": "MS PLAIN WASHER  M16",
+        "inQty": 15,
+        "inVal": 2065,
+        "outQty": 3.5,
+        "outVal": 477,
+        "unit": "MT"
+      },
+      {
+        "name": "RFS GDP SATIN TOP PIVOT FOR GLS DOOR",
+        "inQty": 3.5,
+        "inVal": 1995,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Towel Bar",
+        "inQty": 3.5,
+        "inVal": 1995,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "M.S. Electrode 4x450mm",
+        "inQty": 3.5,
+        "inVal": 1995,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS WELDING ROD (6013) 4X450MM",
+        "inQty": 3.5,
+        "inVal": 1995,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "S.S Electrode 4mm",
+        "inQty": 3.5,
+        "inVal": 1995,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CAT6 4 PAIR UTP CABLE",
+        "inQty": 14,
+        "inVal": 1960,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CAT 6 CABLE D LINK",
+        "inQty": 14,
+        "inVal": 1960,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS CHANNEL 125MM",
+        "inQty": 15,
+        "inVal": 1950,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Channel 250x8mm",
+        "inQty": 15,
+        "inVal": 1950,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Safty Shoes 10 No",
+        "inQty": 20,
+        "inVal": 1900,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Safty Shoes 6 No",
+        "inQty": 20,
+        "inVal": 1900,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Hex Bolt Nut M 16x150",
+        "inQty": 1,
+        "inVal": 1900,
+        "outQty": 0.5,
+        "outVal": 950,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Hex Bolt Nut M16X50",
+        "inQty": 1,
+        "inVal": 1900,
+        "outQty": 0.5,
+        "outVal": 950,
+        "unit": "MT"
+      },
+      {
+        "name": "G.I.R ELBOW 1/2\"X3/4\"",
+        "inQty": 210,
+        "inVal": 1890,
+        "outQty": 110.5,
+        "outVal": 994.5,
+        "unit": "MT"
+      },
+      {
+        "name": "G.I Socket 1/2\"",
+        "inQty": 210,
+        "inVal": 1890,
+        "outQty": 110.5,
+        "outVal": 994.5,
+        "unit": "MT"
+      },
+      {
+        "name": "G.I. SOCKET 3/4\"",
+        "inQty": 210,
+        "inVal": 1890,
+        "outQty": 110.5,
+        "outVal": 994.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Anchor -V165 x 8mm",
+        "inQty": 9,
+        "inVal": 1890,
+        "outQty": 8,
+        "outVal": 1680,
+        "unit": "MT"
+      },
+      {
+        "name": "ARMOURED CABLE 2.5 SQMM(4 CORE) COPPER",
+        "inQty": 9,
+        "inVal": 1890,
+        "outQty": 8,
+        "outVal": 1680,
+        "unit": "MT"
+      },
+      {
+        "name": "COTTON NOSE MASK",
+        "inQty": 0,
+        "inVal": 1825,
+        "outQty": 0,
+        "outVal": 1499.8,
+        "unit": "MT"
+      },
+      {
+        "name": "Connecting Rod Bearing",
+        "inQty": 150,
+        "inVal": 1800,
+        "outQty": 54.5,
+        "outVal": 654,
+        "unit": "MT"
+      },
+      {
+        "name": "Cylinder Head Repair Kit",
+        "inQty": 150,
+        "inVal": 1800,
+        "outQty": 54.5,
+        "outVal": 654,
+        "unit": "MT"
+      },
+      {
+        "name": "KB MOUSE LOG MK220 WL",
+        "inQty": 25,
+        "inVal": 1700,
+        "outQty": 14.735,
+        "outVal": 1001.98,
+        "unit": "MT"
+      },
+      {
+        "name": "KEY BOARD",
+        "inQty": 25,
+        "inVal": 1700,
+        "outQty": 14.735,
+        "outVal": 1001.98,
+        "unit": "MT"
+      },
+      {
+        "name": "LOGITECH WIRED COMBO MK120",
+        "inQty": 25,
+        "inVal": 1700,
+        "outQty": 14.735,
+        "outVal": 1001.98,
+        "unit": "MT"
+      },
+      {
+        "name": "SCREW",
+        "inQty": 20,
+        "inVal": 1680,
+        "outQty": 5,
+        "outVal": 416,
+        "unit": "MT"
+      },
+      {
+        "name": "Screw 2 inch",
+        "inQty": 20,
+        "inVal": 1680,
+        "outQty": 5,
+        "outVal": 416,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 50X62X7",
+        "inQty": 10,
+        "inVal": 1620,
+        "outQty": 2.5,
+        "outVal": 405,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 50x65x10",
+        "inQty": 10,
+        "inVal": 1620,
+        "outQty": 2.5,
+        "outVal": 405,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Plain Washer 3/4\"",
+        "inQty": 20,
+        "inVal": 1600,
+        "outQty": 0.5,
+        "outVal": 40,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Plain Washer 5/8\"",
+        "inQty": 20,
+        "inVal": 1600,
+        "outQty": 0.5,
+        "outVal": 40,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Washer M10",
+        "inQty": 20,
+        "inVal": 1500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS WASHER M12",
+        "inQty": 20,
+        "inVal": 1500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "8201",
+        "inQty": 10,
+        "inVal": 1490,
+        "outQty": 2,
+        "outVal": 219,
+        "unit": "MT"
+      },
+      {
+        "name": "Ht Bolt Nut 8X75 mm",
+        "inQty": 10,
+        "inVal": 1490,
+        "outQty": 2,
+        "outVal": 219,
+        "unit": "MT"
+      },
+      {
+        "name": "8307",
+        "inQty": 5,
+        "inVal": 1350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "8421",
+        "inQty": 7.5,
+        "inVal": 1350,
+        "outQty": 1.585,
+        "outVal": 285.3,
+        "unit": "MT"
+      },
+      {
+        "name": "Rod End Fork Dia 50",
+        "inQty": 0,
+        "inVal": 1350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "RYFS-05-2021-81806358-RS036",
+        "inQty": 1,
+        "inVal": 1350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Seal Kit(Set) 100x45mm",
+        "inQty": 1,
+        "inVal": 1350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Spare Blade UB-10 for UK-3",
+        "inQty": 0,
+        "inVal": 1350,
+        "outQty": 7.5,
+        "outVal": 127.86,
+        "unit": "MT"
+      },
+      {
+        "name": "Hose Flexible Set",
+        "inQty": 5,
+        "inVal": 1350,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "GLAND ROPE( GST- 18%)",
+        "inQty": 7.5,
+        "inVal": 1350,
+        "outQty": 4.49,
+        "outVal": 808.2,
+        "unit": "MT"
+      },
+      {
+        "name": "Induction Cooker",
+        "inQty": 7.5,
+        "inVal": 1350,
+        "outQty": 4.49,
+        "outVal": 808.2,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL LEVEL INDICATOR",
+        "inQty": 7.5,
+        "inVal": 1350,
+        "outQty": 1.975,
+        "outVal": 355.5,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL",
+        "inQty": 7.5,
+        "inVal": 1350,
+        "outQty": 1.975,
+        "outVal": 355.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Wall Mounting Fan (400MM)",
+        "inQty": 7.5,
+        "inVal": 1350,
+        "outQty": 1.585,
+        "outVal": 285.3,
+        "unit": "MT"
+      },
+      {
+        "name": "Bearing 6311-2Z-L207",
+        "inQty": 14,
+        "inVal": 1280,
+        "outQty": 11,
+        "outVal": 2029,
+        "unit": "MT"
+      },
+      {
+        "name": "Pin Bush Coupling Bolt Rb-125",
+        "inQty": 10,
+        "inVal": 1190,
+        "outQty": 0.5,
+        "outVal": 59.5,
+        "unit": "MT"
+      },
+      {
+        "name": "BRASS SHIM 0.55MM",
+        "inQty": 10,
+        "inVal": 1190,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "BRASS SHIM 1/2mm",
+        "inQty": 10,
+        "inVal": 1190,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Single Side Silicon Coated Fabric",
+        "inQty": 25,
+        "inVal": 1125,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Sleeve 1'",
+        "inQty": 25,
+        "inVal": 1125,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Hf(Abs) with 120cm",
+        "inQty": 12.5,
+        "inVal": 1125,
+        "outQty": 14.935,
+        "outVal": 1324.15,
+        "unit": "MT"
+      },
+      {
+        "name": "Hose Clamp",
+        "inQty": 12.5,
+        "inVal": 1125,
+        "outQty": 14.935,
+        "outVal": 1324.15,
+        "unit": "MT"
+      },
+      {
+        "name": "6506",
+        "inQty": 5,
+        "inVal": 1100,
+        "outQty": 4.84,
+        "outVal": 1064.8,
+        "unit": "MT"
+      },
+      {
+        "name": "SAFETY SHOE GENTS",
+        "inQty": 5,
+        "inVal": 1100,
+        "outQty": 4.84,
+        "outVal": 1064.8,
+        "unit": "MT"
+      },
+      {
+        "name": "Flexible Cable 1.5 Sqmm x 2 Core",
+        "inQty": 20,
+        "inVal": 1100,
+        "outQty": 24,
+        "outVal": 1320,
+        "unit": "MT"
+      },
+      {
+        "name": "Flexible Copper Wire Single Core",
+        "inQty": 20,
+        "inVal": 1100,
+        "outQty": 24,
+        "outVal": 1320,
+        "unit": "MT"
+      },
+      {
+        "name": "9987",
+        "inQty": 0.5,
+        "inVal": 1087.5,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Rpepair & Servicing",
+        "inQty": 0.5,
+        "inVal": 1087.5,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Sampling & Analysis Chages",
+        "inQty": 0.5,
+        "inVal": 1087.5,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "7320",
+        "inQty": 10,
+        "inVal": 1050,
+        "outQty": 1,
+        "outVal": 95,
+        "unit": "MT"
+      },
+      {
+        "name": "BUFFER SPRING",
+        "inQty": 10,
+        "inVal": 1050,
+        "outQty": 1,
+        "outVal": 95,
+        "unit": "MT"
+      },
+      {
+        "name": "D.V. SET NOZEL",
+        "inQty": 1,
+        "inVal": 1050,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "ELEMENT AIR CLEANER",
+        "inQty": 1,
+        "inVal": 1050,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Flush Pvc Pipe",
+        "inQty": 0.5,
+        "inVal": 1025,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HDPE PIPE 1\"",
+        "inQty": 0.5,
+        "inVal": 1025,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 200X300X37",
+        "inQty": 10,
+        "inVal": 1000,
+        "outQty": 7.5,
+        "outVal": 750,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 20X40X10",
+        "inQty": 10,
+        "inVal": 1000,
+        "outQty": 7.5,
+        "outVal": 750,
+        "unit": "MT"
+      },
+      {
+        "name": "QRT ELEMENT(K)",
+        "inQty": 0.5,
+        "inVal": 974.58,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "EPOXY BLACK ENAMEL PAINT (20ltrpack)",
+        "inQty": 0.5,
+        "inVal": 974.58,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Epoxy Black Enamel Paint (4ltr Pack)",
+        "inQty": 0.5,
+        "inVal": 974.58,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 15*30*6",
+        "inQty": 3,
+        "inVal": 945,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 30x47x7",
+        "inQty": 3,
+        "inVal": 945,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Hex Bolt Nut M 12x75",
+        "inQty": 1,
+        "inVal": 910,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Hex Bolt Nut M16x100",
+        "inQty": 1,
+        "inVal": 910,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SPLASH DISC",
+        "inQty": 5,
+        "inVal": 900,
+        "outQty": 1.1,
+        "outVal": 198,
+        "unit": "MT"
+      },
+      {
+        "name": "OUTER DISTANCE BUSH",
+        "inQty": 5,
+        "inVal": 900,
+        "outQty": 1.1,
+        "outVal": 198,
+        "unit": "MT"
+      },
+      {
+        "name": "MS NUT BOLT 12X120MM",
+        "inQty": 10,
+        "inVal": 840,
+        "outQty": 1,
+        "outVal": 32,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Nut & Bolt 20x6mm",
+        "inQty": 10,
+        "inVal": 840,
+        "outQty": 1,
+        "outVal": 32,
+        "unit": "MT"
+      },
+      {
+        "name": "Rubber Corck",
+        "inQty": 0,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SODIUM HYDROXIDE N/10",
+        "inQty": 0.5,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Sodium Hydroxide Pellets SQ",
+        "inQty": 0.5,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Nylone Nut",
+        "inQty": 10,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Oxygen Check Nut",
+        "inQty": 10,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "RING SPANNER 16X 17",
+        "inQty": 2,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Ring Spanner 18x19",
+        "inQty": 2,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "ELMEX CONNECTOR CST 10",
+        "inQty": 25,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "ELMEX CONNECTOR CST 25",
+        "inQty": 25,
+        "inVal": 800,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Hex Bolt Nut (Mix Size)",
+        "inQty": 10,
+        "inVal": 760,
+        "outQty": 1.5,
+        "outVal": 68,
+        "unit": "MT"
+      },
+      {
+        "name": "MS HEX BOLT NUT  WASHER M12X35",
+        "inQty": 10,
+        "inVal": 760,
+        "outQty": 1.5,
+        "outVal": 68,
+        "unit": "MT"
+      },
+      {
+        "name": "Seci",
+        "inQty": 25,
+        "inVal": 750,
+        "outQty": 3,
+        "outVal": 90,
+        "unit": "MT"
+      },
+      {
+        "name": "SEQUENTIAL  TIMER, MODEL NO. ST10M1",
+        "inQty": 25,
+        "inVal": 750,
+        "outQty": 3,
+        "outVal": 90,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Washer M16",
+        "inQty": 5,
+        "inVal": 745,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Washer M20",
+        "inQty": 5,
+        "inVal": 745,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "6310",
+        "inQty": 5,
+        "inVal": 725,
+        "outQty": 3,
+        "outVal": 435,
+        "unit": "MT"
+      },
+      {
+        "name": "Safety Belt Full Body",
+        "inQty": 5,
+        "inVal": 725,
+        "outQty": 3,
+        "outVal": 435,
+        "unit": "MT"
+      },
+      {
+        "name": "Screw Wrench 06\"",
+        "inQty": 10,
+        "inVal": 700,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Screw Wrench 12\"",
+        "inQty": 10,
+        "inVal": 700,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "4821",
+        "inQty": 2,
+        "inVal": 680,
+        "outQty": 0.5,
+        "outVal": 170,
+        "unit": "MT"
+      },
+      {
+        "name": "PLYWOOD 8MM 8X4",
+        "inQty": 2,
+        "inVal": 680,
+        "outQty": 0.5,
+        "outVal": 170,
+        "unit": "MT"
+      },
+      {
+        "name": "Liner",
+        "inQty": 25,
+        "inVal": 625,
+        "outQty": 15.5,
+        "outVal": 393.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Liner Cylinder",
+        "inQty": 25,
+        "inVal": 625,
+        "outQty": 15.5,
+        "outVal": 393.5,
+        "unit": "MT"
+      },
+      {
+        "name": "V BELT SPC-3350",
+        "inQty": 6,
+        "inVal": 624,
+        "outQty": 0.5,
+        "outVal": 52,
+        "unit": "MT"
+      },
+      {
+        "name": "V-Belt XPA-1900",
+        "inQty": 6,
+        "inVal": 624,
+        "outQty": 0.5,
+        "outVal": 52,
+        "unit": "MT"
+      },
+      {
+        "name": "Energy Meter EM1200",
+        "inQty": 20,
+        "inVal": 560,
+        "outQty": 5,
+        "outVal": 140,
+        "unit": "MT"
+      },
+      {
+        "name": "METRAVI 603 DIGITAL MULTIMETER",
+        "inQty": 20,
+        "inVal": 560,
+        "outQty": 5,
+        "outVal": 140,
+        "unit": "MT"
+      },
+      {
+        "name": "4 SQMM Wire SC",
+        "inQty": 6.9,
+        "inVal": 552,
+        "outQty": 5.095,
+        "outVal": 417.19,
+        "unit": "MT"
+      },
+      {
+        "name": "50 S/C CU FLEX",
+        "inQty": 6.9,
+        "inVal": 552,
+        "outQty": 5.095,
+        "outVal": 417.19,
+        "unit": "MT"
+      },
+      {
+        "name": "ALLUMINIUM STRAIGHT JOINT CABLE LUGS 300 SQ.MM",
+        "inQty": 100,
+        "inVal": 520,
+        "outQty": 7.5,
+        "outVal": 16.5,
+        "unit": "MT"
+      },
+      {
+        "name": "ALLUMINIUM STRAIGHT JOINT CABLE LUGS 70 SQ.MM",
+        "inQty": 100,
+        "inVal": 520,
+        "outQty": 7.5,
+        "outVal": 16.5,
+        "unit": "MT"
+      },
+      {
+        "name": "ALLUMINIUM STRAIGHT JOINT CABLE LUGS 95 SQ.MM",
+        "inQty": 100,
+        "inVal": 520,
+        "outQty": 7.5,
+        "outVal": 16.5,
+        "unit": "MT"
+      },
+      {
+        "name": "4008",
+        "inQty": 1,
+        "inVal": 500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Labyrinth Ring",
+        "inQty": 1,
+        "inVal": 500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Rubber Hose Pipe 2\"",
+        "inQty": 1,
+        "inVal": 500,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "38160000",
+        "inQty": 0.5,
+        "inVal": 475,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Castable Mac",
+        "inQty": 0.5,
+        "inVal": 475,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "LC 80 Patching",
+        "inQty": 0.5,
+        "inVal": 475,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Potassium Dicromate",
+        "inQty": 0.055,
+        "inVal": 462,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "GUIDE ROLLER FOR 100 TPD KLIN",
+        "inQty": 4,
+        "inVal": 440,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "GUIDE ROLLER FOR 100 TPD KLIN Dia 20mm",
+        "inQty": 4,
+        "inVal": 440,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MS WASHER M24",
+        "inQty": 5,
+        "inVal": 420,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "MX HEX BOLT NUT WASHER M10X65",
+        "inQty": 5,
+        "inVal": 420,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "RING SPANNER 24-27",
+        "inQty": 6,
+        "inVal": 420,
+        "outQty": 2.5,
+        "outVal": 175,
+        "unit": "MT"
+      },
+      {
+        "name": "Ring Spanner 24x26",
+        "inQty": 6,
+        "inVal": 420,
+        "outQty": 2.5,
+        "outVal": 175,
+        "unit": "MT"
+      },
+      {
+        "name": "WELDING ROD 4.00 X 450",
+        "inQty": 3,
+        "inVal": 420,
+        "outQty": 1,
+        "outVal": 140,
+        "unit": "MT"
+      },
+      {
+        "name": "WELDING ROD 4.00X450MM",
+        "inQty": 3,
+        "inVal": 420,
+        "outQty": 1,
+        "outVal": 140,
+        "unit": "MT"
+      },
+      {
+        "name": "7520",
+        "inQty": 3,
+        "inVal": 408,
+        "outQty": 1,
+        "outVal": 136,
+        "unit": "MT"
+      },
+      {
+        "name": "SPRING (36X8 TOGGLE SPRING)",
+        "inQty": 3,
+        "inVal": 408,
+        "outQty": 1,
+        "outVal": 136,
+        "unit": "MT"
+      },
+      {
+        "name": "8207",
+        "inQty": 50,
+        "inVal": 400,
+        "outQty": 11.5,
+        "outVal": 92,
+        "unit": "MT"
+      },
+      {
+        "name": "Screw Driver 931",
+        "inQty": 50,
+        "inVal": 400,
+        "outQty": 11.5,
+        "outVal": 92,
+        "unit": "MT"
+      },
+      {
+        "name": "TESTER-813 TAPARIN",
+        "inQty": 50,
+        "inVal": 400,
+        "outQty": 11.5,
+        "outVal": 92,
+        "unit": "MT"
+      },
+      {
+        "name": "Anemo Meter AM-4201",
+        "inQty": 25,
+        "inVal": 375,
+        "outQty": 4,
+        "outVal": 60,
+        "unit": "MT"
+      },
+      {
+        "name": "Clamp meter",
+        "inQty": 25,
+        "inVal": 375,
+        "outQty": 4,
+        "outVal": 60,
+        "unit": "MT"
+      },
+      {
+        "name": "Sinex? Unbalance Weight Motor Vibrator",
+        "inQty": 3,
+        "inVal": 360,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Well Fan Motor Rewinding R Pm-1440",
+        "inQty": 3,
+        "inVal": 360,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Sleeve 10'",
+        "inQty": 5,
+        "inVal": 300,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Sleeve 2'",
+        "inQty": 5,
+        "inVal": 300,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "8467",
+        "inQty": 15,
+        "inVal": 255,
+        "outQty": 5.5,
+        "outVal": 93.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Grinding  Machine Ag 4",
+        "inQty": 15,
+        "inVal": 255,
+        "outQty": 5.5,
+        "outVal": 93.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Acc Flat 12\"+6\"x1.1/4\"(18\"",
+        "inQty": 15,
+        "inVal": 255,
+        "outQty": 5.5,
+        "outVal": 93.5,
+        "unit": "MT"
+      },
+      {
+        "name": "SNV120-F-L",
+        "inQty": 4,
+        "inVal": 240,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SNV511-L-DH-U",
+        "inQty": 4,
+        "inVal": 240,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SOLID PULLEY  C- SECTION 4  GROUP 9\"",
+        "inQty": 3,
+        "inVal": 240,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SOLID PULLEY C-SECTION 5 GROUP 13\"",
+        "inQty": 3,
+        "inVal": 240,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Grinding Wheel 7\"",
+        "inQty": 0.5,
+        "inVal": 225,
+        "outQty": 0,
+        "outVal": 2634.5,
+        "unit": "MT"
+      },
+      {
+        "name": "NOZZLE 30 GPH",
+        "inQty": 0.5,
+        "inVal": 225,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "PENCIL GRINDING WHEEL",
+        "inQty": 0.5,
+        "inVal": 225,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "GI Tee 3/4\"",
+        "inQty": 0,
+        "inVal": 225,
+        "outQty": 0,
+        "outVal": 72,
+        "unit": "MT"
+      },
+      {
+        "name": "HWR CLAMP 3\"",
+        "inQty": 25,
+        "inVal": 225,
+        "outQty": 5,
+        "outVal": 45,
+        "unit": "MT"
+      },
+      {
+        "name": "HWR CLAMP 4\"",
+        "inQty": 25,
+        "inVal": 225,
+        "outQty": 5,
+        "outVal": 45,
+        "unit": "MT"
+      },
+      {
+        "name": "CHAMPING PASTE",
+        "inQty": 5,
+        "inVal": 225,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CONTRACTOR MNX-12",
+        "inQty": 5,
+        "inVal": 225,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Hose Pipe Brass Connector",
+        "inQty": 1.5,
+        "inVal": 223.5,
+        "outQty": 1,
+        "outVal": 57,
+        "unit": "MT"
+      },
+      {
+        "name": "Shaft Sleeve for Pump",
+        "inQty": 1.5,
+        "inVal": 223.5,
+        "outQty": 1,
+        "outVal": 57,
+        "unit": "MT"
+      },
+      {
+        "name": "7412",
+        "inQty": 1.5,
+        "inVal": 204,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Cp Flange",
+        "inQty": 1.5,
+        "inVal": 204,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "6207",
+        "inQty": 2.5,
+        "inVal": 200,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Ganji Clean Cloth",
+        "inQty": 2.5,
+        "inVal": 200,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "CARD CONTROL",
+        "inQty": 5,
+        "inVal": 175,
+        "outQty": 3,
+        "outVal": 105,
+        "unit": "MT"
+      },
+      {
+        "name": "C CHANNEL DIN RAIL MOUNTING MATERIAL",
+        "inQty": 5,
+        "inVal": 175,
+        "outQty": 3,
+        "outVal": 105,
+        "unit": "MT"
+      },
+      {
+        "name": "BRAKE OIL  18%",
+        "inQty": 0.165,
+        "inVal": 173.25,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "hose pipe 1/4 R2 660mm + Fitting",
+        "inQty": 0,
+        "inVal": 150,
+        "outQty": 0,
+        "outVal": 150,
+        "unit": "MT"
+      },
+      {
+        "name": "AIR PIPE",
+        "inQty": 50,
+        "inVal": 150,
+        "outQty": 50,
+        "outVal": 150,
+        "unit": "MT"
+      },
+      {
+        "name": "Air Pipe Connector for Pneumatic",
+        "inQty": 50,
+        "inVal": 150,
+        "outQty": 50,
+        "outVal": 150,
+        "unit": "MT"
+      },
+      {
+        "name": "COPPER RING TYPE LUGS SIZE-1.5SQMM",
+        "inQty": 5,
+        "inVal": 150,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "ELEMEX  CONNECTOR CST 16",
+        "inQty": 5,
+        "inVal": 150,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "HOLE CUTTER 19 SQMM",
+        "inQty": 10,
+        "inVal": 90,
+        "outQty": 0.5,
+        "outVal": 4.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HSS Drill Bit 5 MM",
+        "inQty": 10,
+        "inVal": 90,
+        "outQty": 0.5,
+        "outVal": 4.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HSS HAND TAPE 5MM",
+        "inQty": 10,
+        "inVal": 90,
+        "outQty": 0.5,
+        "outVal": 4.5,
+        "unit": "MT"
+      },
+      {
+        "name": "PNEUMATIC  CLAMP 55MM",
+        "inQty": 1,
+        "inVal": 84,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "TURN BUCKET 20MM",
+        "inQty": 1,
+        "inVal": 84,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "3917",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 45,
+        "unit": "MT"
+      },
+      {
+        "name": "4817",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 500,
+        "unit": "MT"
+      },
+      {
+        "name": "5206",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 137.5,
+        "unit": "MT"
+      },
+      {
+        "name": "6006",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 199.15,
+        "unit": "MT"
+      },
+      {
+        "name": "6616",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 96.185,
+        "unit": "MT"
+      },
+      {
+        "name": "7203",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 177.92,
+        "outVal": 35584,
+        "unit": "MT"
+      },
+      {
+        "name": "7407",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 75,
+        "unit": "MT"
+      },
+      {
+        "name": "7415",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 22.5,
+        "unit": "MT"
+      },
+      {
+        "name": "8203",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 9.5,
+        "outVal": 2660,
+        "unit": "MT"
+      },
+      {
+        "name": "8409",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 266,
+        "unit": "MT"
+      },
+      {
+        "name": "8471",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 900,
+        "unit": "MT"
+      },
+      {
+        "name": "8513",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 70,
+        "unit": "MT"
+      },
+      {
+        "name": "9004",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 43.5,
+        "outVal": 3045,
+        "unit": "MT"
+      },
+      {
+        "name": "9026",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 10,
+        "outVal": 250,
+        "unit": "MT"
+      },
+      {
+        "name": "851762",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 37.5,
+        "unit": "MT"
+      },
+      {
+        "name": "962000",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 140,
+        "unit": "MT"
+      },
+      {
+        "name": "26190090",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 177.92,
+        "outVal": 35584,
+        "unit": "MT"
+      },
+      {
+        "name": "39173109",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 45,
+        "unit": "MT"
+      },
+      {
+        "name": "Other Waste",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 177.92,
+        "outVal": 35584,
+        "unit": "MT"
+      },
+      {
+        "name": "Dolochar",
+        "inQty": 827.635,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Rejected Castable",
+        "inQty": 515.15,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "Tarpin Oil",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 1800,
+        "unit": "MT"
+      },
+      {
+        "name": "TARPIN OIL 18%",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 1800,
+        "unit": "MT"
+      },
+      {
+        "name": "VARNISH",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 1800,
+        "unit": "MT"
+      },
+      {
+        "name": "Rakshak Shading Nett",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 199.15,
+        "unit": "MT"
+      },
+      {
+        "name": "WIRE SCREEN 1290X2400 APP-18,DIA 8MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 22.5,
+        "unit": "MT"
+      },
+      {
+        "name": "BRASS SCREW 1\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 22.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Chain Pulley Block 5 Ton X 6 MTR",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 2529.9,
+        "unit": "MT"
+      },
+      {
+        "name": "Holder",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 900,
+        "unit": "MT"
+      },
+      {
+        "name": "240GB SSD",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.036,
+        "outVal": 1629.9,
+        "unit": "MT"
+      },
+      {
+        "name": "Dell Wireless Combo",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.036,
+        "outVal": 1629.9,
+        "unit": "MT"
+      },
+      {
+        "name": "Air Cooler",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 165,
+        "unit": "MT"
+      },
+      {
+        "name": "Celling Fan Motor Rewinding with Bearing",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 165,
+        "unit": "MT"
+      },
+      {
+        "name": "Simplex Sproket Size 3/4\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 165,
+        "unit": "MT"
+      },
+      {
+        "name": "32213A-AM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 107.5,
+        "unit": "MT"
+      },
+      {
+        "name": "TORCH LIGHT",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 70,
+        "unit": "MT"
+      },
+      {
+        "name": "DGS-1005A 5port Giga Switch",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 37.5,
+        "unit": "MT"
+      },
+      {
+        "name": "PCV CHANGE",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4.5,
+        "outVal": 7537.5,
+        "unit": "MT"
+      },
+      {
+        "name": "PUMP SHAFT BUSH (WITH MATERIAL)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4.5,
+        "outVal": 7537.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Fuel & Lubricants",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 61250,
+        "unit": "MT"
+      },
+      {
+        "name": "Measuring Cylender",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6.5,
+        "outVal": 31200,
+        "unit": "MT"
+      },
+      {
+        "name": "Mercuric Chloride",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6.5,
+        "outVal": 31200,
+        "unit": "MT"
+      },
+      {
+        "name": "Nitric Acid",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6.5,
+        "outVal": 31200,
+        "unit": "MT"
+      },
+      {
+        "name": "Hose Pipe 1/4 R2 350mm + Fitting",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 45,
+        "unit": "MT"
+      },
+      {
+        "name": "PIPE 1\" 0.8MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4,
+        "outVal": 100.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Pvc Circular Box",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 20,
+        "unit": "MT"
+      },
+      {
+        "name": "PVC FOOT VALVE WITH PVC NIPPLE 3\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 20,
+        "unit": "MT"
+      },
+      {
+        "name": "PVC Section Pipe 2\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3.5,
+        "outVal": 80.5,
+        "unit": "MT"
+      },
+      {
+        "name": "PVC Suction Pipe 2\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3.5,
+        "outVal": 80.5,
+        "unit": "MT"
+      },
+      {
+        "name": "3/4\" 45H 1500MM + FITTING",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 62.5,
+        "outVal": 5625,
+        "unit": "MT"
+      },
+      {
+        "name": "3/4\" 45H 800mm+ Fitting Hose Pipe",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 62.5,
+        "outVal": 5625,
+        "unit": "MT"
+      },
+      {
+        "name": "Hose Pipe 1.1/4\" R2 1200mm +Socut",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 324,
+        "outVal": 58136.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HOSE PIPE 1/2\" R2 3200MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 324,
+        "outVal": 58136.5,
+        "unit": "MT"
+      },
+      {
+        "name": "hose pipe 1/2 R2 850MM FITING",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 11.5,
+        "outVal": 2012.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HOSE PIPE 1/4\"X280MM FITTING",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 11.5,
+        "outVal": 2012.5,
+        "unit": "MT"
+      },
+      {
+        "name": "hose pipe 3/4 45h 900mm hose + fitting",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 115,
+        "outVal": 13455,
+        "unit": "MT"
+      },
+      {
+        "name": "H.R.Coil Cut in Pcs 6mm Plate",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 115,
+        "outVal": 13455,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD HOSE PIPE 612/80099",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 116.5,
+        "outVal": 13164.5,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD HOSE PIPE 613/05400",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 116.5,
+        "outVal": 13164.5,
+        "unit": "MT"
+      },
+      {
+        "name": "V BELT",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 92.37,
+        "unit": "MT"
+      },
+      {
+        "name": "V Belt A 57",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 92.37,
+        "unit": "MT"
+      },
+      {
+        "name": "V BELT B-65",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 25,
+        "outVal": 3000,
+        "unit": "MT"
+      },
+      {
+        "name": "V Belt B-80",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 25,
+        "outVal": 3000,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 65x80x10",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 1470,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Seal 70x85x8",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 1470,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 80-100-10",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 75,
+        "unit": "MT"
+      },
+      {
+        "name": "OIL SEAL 95X130X13 MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 75,
+        "unit": "MT"
+      },
+      {
+        "name": "A4 Zerox Paper Maple",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 500,
+        "unit": "MT"
+      },
+      {
+        "name": "White Paper",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 500,
+        "unit": "MT"
+      },
+      {
+        "name": "Arch File",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 110,
+        "unit": "MT"
+      },
+      {
+        "name": "BIN CARD",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 110,
+        "unit": "MT"
+      },
+      {
+        "name": "GATE PASS BOOK",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 110,
+        "unit": "MT"
+      },
+      {
+        "name": "Printing of Power & Diesel Recept Bok",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 40,
+        "unit": "MT"
+      },
+      {
+        "name": "Print Leave Application Form",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 40,
+        "unit": "MT"
+      },
+      {
+        "name": "Print Store Issued Voucher",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 40,
+        "unit": "MT"
+      },
+      {
+        "name": "Print Transfer Challan",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 3247.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Purchase Requisition Book",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 3247.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Register",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 3247.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Register No 2",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 137.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Nose Mask",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 137.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Welding Hand Screen",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 96.185,
+        "unit": "MT"
+      },
+      {
+        "name": "Cotton Hand Gloves 12\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 96.185,
+        "unit": "MT"
+      },
+      {
+        "name": "HSS Drill Bit 6mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 1474,
+        "unit": "MT"
+      },
+      {
+        "name": "HSS Drill Bit 8MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 1474,
+        "unit": "MT"
+      },
+      {
+        "name": "Asbestos Gland Packing",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 825,
+        "unit": "MT"
+      },
+      {
+        "name": "Asbestos Gland Packing 10mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 825,
+        "unit": "MT"
+      },
+      {
+        "name": "Asbestos Gland Packing 12.5mm Style-1910",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 335.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Asbestos Gland Packing 50mm (8.5mtr)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 335.5,
+        "unit": "MT"
+      },
+      {
+        "name": "SQ BAR  6X6MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 25,
+        "outVal": 1125,
+        "unit": "MT"
+      },
+      {
+        "name": "SQ BAR 8X8MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 25,
+        "outVal": 1125,
+        "unit": "MT"
+      },
+      {
+        "name": "Hyd ST Connector",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 27,
+        "unit": "MT"
+      },
+      {
+        "name": "HYD ST CONNECTOR 16MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 27,
+        "unit": "MT"
+      },
+      {
+        "name": "MS NIPPLE (H) 1.1/4\"X6\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 960,
+        "unit": "MT"
+      },
+      {
+        "name": "Wire Screen Cloth 1290x2300x3mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 960,
+        "unit": "MT"
+      },
+      {
+        "name": "WIRE SCREEN CLOTH 1290X2300X6MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 960,
+        "unit": "MT"
+      },
+      {
+        "name": "COUPLING BOLT M16x 80",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 712.5,
+        "unit": "MT"
+      },
+      {
+        "name": "COUPLING BOLT M16X90",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 712.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Fastner Key",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 145,
+        "unit": "MT"
+      },
+      {
+        "name": "Foudation Bolt 700*20mm with Double Nut",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 145,
+        "unit": "MT"
+      },
+      {
+        "name": "Ht Bolt with Double Nut M20X300",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 686,
+        "unit": "MT"
+      },
+      {
+        "name": "HT Bolt with Nut M20x100",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 686,
+        "unit": "MT"
+      },
+      {
+        "name": "HT HEX BOLT NUT F.T M16X80",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 1505,
+        "unit": "MT"
+      },
+      {
+        "name": "HT HEX BOLT NUT FT M20*150",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 1505,
+        "unit": "MT"
+      },
+      {
+        "name": "Ht Hex Bolt Nut M20X150",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 3050,
+        "unit": "MT"
+      },
+      {
+        "name": "HT HEX BOLT NUT M24X280",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 5,
+        "outVal": 3050,
+        "unit": "MT"
+      },
+      {
+        "name": "HT Hex Bolt Nut M45x400mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 5,
+        "outVal": 3050,
+        "unit": "MT"
+      },
+      {
+        "name": "HT HEX NUT M10",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 360,
+        "unit": "MT"
+      },
+      {
+        "name": "Ht Hex Nut M16",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 360,
+        "unit": "MT"
+      },
+      {
+        "name": "MS Hex Nut 1\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 66,
+        "unit": "MT"
+      },
+      {
+        "name": "Ms Hex Nut M10",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 66,
+        "unit": "MT"
+      },
+      {
+        "name": "SELF DRILLING SCREW 1.1/2\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 8.5,
+        "outVal": 1347.5,
+        "unit": "MT"
+      },
+      {
+        "name": "SELF DRILLING SCREW 2\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 8.5,
+        "outVal": 1347.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Spring Washer",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 80,
+        "unit": "MT"
+      },
+      {
+        "name": "SQUARE  HEAD BOLT  & NUT  M24X400",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 80,
+        "unit": "MT"
+      },
+      {
+        "name": "Square Head Bolt  with D Nut M 36x450",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 98,
+        "unit": "MT"
+      },
+      {
+        "name": "SS BOLT",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 98,
+        "unit": "MT"
+      },
+      {
+        "name": "SS HEX BOLT NUT D- WASHER",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 79,
+        "unit": "MT"
+      },
+      {
+        "name": "SS HEX BOLT NUT M20X130",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 79,
+        "unit": "MT"
+      },
+      {
+        "name": "STUD BOLT WITH DOUBLE NUT F.T M30X400",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 112.5,
+        "unit": "MT"
+      },
+      {
+        "name": "STUD WITH DOUBLE NUT FULL THREAD M39X500",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 112.5,
+        "unit": "MT"
+      },
+      {
+        "name": "C- Clamp Size 30",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 294,
+        "unit": "MT"
+      },
+      {
+        "name": "C- Clamp Size-37",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 294,
+        "unit": "MT"
+      },
+      {
+        "name": "HOSE CLIP 2\" (MS)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 37.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Hose Clip 2\" (SS)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 37.5,
+        "unit": "MT"
+      },
+      {
+        "name": "PNEUMATIC C-CLAMP 30mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 90,
+        "unit": "MT"
+      },
+      {
+        "name": "Pneumatic Clamp 48mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 90,
+        "unit": "MT"
+      },
+      {
+        "name": "Wire Rope Clamp 20mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 75,
+        "unit": "MT"
+      },
+      {
+        "name": "Qrt Rod Length-950mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 238,
+        "unit": "MT"
+      },
+      {
+        "name": "TOGGLE PIN 36/8",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 238,
+        "unit": "MT"
+      },
+      {
+        "name": "Combination Plier 16218",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 9.5,
+        "outVal": 2660,
+        "unit": "MT"
+      },
+      {
+        "name": "NOSE PLIER SIZE 8\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 9.5,
+        "outVal": 2660,
+        "unit": "MT"
+      },
+      {
+        "name": "Round File 12\" (Bastard)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 1507.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Sim Cutter 12\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 435,
+        "unit": "MT"
+      },
+      {
+        "name": "TIN CUTTER WITH  SPRING  TES 12",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 435,
+        "unit": "MT"
+      },
+      {
+        "name": "Allen Key 4mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 130,
+        "unit": "MT"
+      },
+      {
+        "name": "Allen Key 5/32",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 130,
+        "unit": "MT"
+      },
+      {
+        "name": "ALLEN KEY SET IN MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 14.5,
+        "outVal": 942.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Chain Pipe Wrench 6\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 14.5,
+        "outVal": 942.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Spare Blade UB-10 for UK-3 (10 Pcs Pkt)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 7.5,
+        "outVal": 127.86,
+        "unit": "MT"
+      },
+      {
+        "name": "Utility Knife UK-3",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 7.5,
+        "outVal": 127.86,
+        "unit": "MT"
+      },
+      {
+        "name": "Bearing 22330 MBW33 - C3",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 266,
+        "unit": "MT"
+      },
+      {
+        "name": "Fip Repair Kit",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 75,
+        "unit": "MT"
+      },
+      {
+        "name": "GAC Governor New Fitment & Commissioning",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 75,
+        "unit": "MT"
+      },
+      {
+        "name": "Oil Filter",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 112.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Piston",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.5,
+        "outVal": 112.5,
+        "unit": "MT"
+      },
+      {
+        "name": "PUMP- 12%",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6.75,
+        "outVal": 270,
+        "unit": "MT"
+      },
+      {
+        "name": "PUMP (18%)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6.75,
+        "outVal": 270,
+        "unit": "MT"
+      },
+      {
+        "name": "Seal Kit Pneumatic Cylinder",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6.75,
+        "outVal": 270,
+        "unit": "MT"
+      },
+      {
+        "name": "Air Blower 650",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 550,
+        "unit": "MT"
+      },
+      {
+        "name": "ASSY,PNEUM CYLINDER",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 550,
+        "unit": "MT"
+      },
+      {
+        "name": "Fan Regulator",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6,
+        "outVal": 360,
+        "unit": "MT"
+      },
+      {
+        "name": "GEAR WHEEL",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 6,
+        "outVal": 360,
+        "unit": "MT"
+      },
+      {
+        "name": "FLOAT VALVE",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.75,
+        "outVal": 120,
+        "unit": "MT"
+      },
+      {
+        "name": "FRL UNIT 1/2\"",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.75,
+        "outVal": 120,
+        "unit": "MT"
+      },
+      {
+        "name": "Return Idler Roller_750x114mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 4025,
+        "unit": "MT"
+      },
+      {
+        "name": "Return Idler Roller_900x114mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 125,
+        "unit": "MT"
+      },
+      {
+        "name": "RETURN IMPACT IDLER ROLLER 950X114MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2.5,
+        "outVal": 125,
+        "unit": "MT"
+      },
+      {
+        "name": "SNAKE PULLEY _600 \ufffd 273 MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 3900,
+        "unit": "MT"
+      },
+      {
+        "name": "Snake Pulley_750x260mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 3900,
+        "unit": "MT"
+      },
+      {
+        "name": "Rubber Daiphram Frame",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.066,
+        "outVal": 112996,
+        "unit": "MT"
+      },
+      {
+        "name": "Snub Pulley 260x600 mm",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1.066,
+        "outVal": 112996,
+        "unit": "MT"
+      },
+      {
+        "name": "SOLENOID COIL",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 2000,
+        "unit": "MT"
+      },
+      {
+        "name": "SOLENOID COIL 220V",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 2000,
+        "unit": "MT"
+      },
+      {
+        "name": "Solid V-Pulley 7\" B- Section",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3.5,
+        "outVal": 1592.5,
+        "unit": "MT"
+      },
+      {
+        "name": "Solid V-Pulley 8\" C-Section 2 Groove",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3.5,
+        "outVal": 1592.5,
+        "unit": "MT"
+      },
+      {
+        "name": "1000KVAREWEXRTR",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3.5,
+        "outVal": 70,
+        "unit": "MT"
+      },
+      {
+        "name": "1000KVAREWEXSTAT",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3.5,
+        "outVal": 70,
+        "unit": "MT"
+      },
+      {
+        "name": "Gear Motor",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 105,
+        "unit": "MT"
+      },
+      {
+        "name": "Gear Motor 2.2 KC4, 3 HP, 1500RPM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 3,
+        "outVal": 105,
+        "unit": "MT"
+      },
+      {
+        "name": "16AL Ferrul Socket",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 111.5,
+        "unit": "MT"
+      },
+      {
+        "name": "16 AMP SWITCH",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 111.5,
+        "unit": "MT"
+      },
+      {
+        "name": "16A Socket",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 150,
+        "unit": "MT"
+      },
+      {
+        "name": "16A SP MCB A",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 150,
+        "unit": "MT"
+      },
+      {
+        "name": "COPPER LUGS RING TYPE 10 SQMM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 430,
+        "unit": "MT"
+      },
+      {
+        "name": "COPPER LUGS RING TYPE  6 SQ.MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 430,
+        "unit": "MT"
+      },
+      {
+        "name": "SOCKET 6A",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 1010,
+        "unit": "MT"
+      },
+      {
+        "name": "TIMER XC 800 SELECT",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 1010,
+        "unit": "MT"
+      },
+      {
+        "name": "Tube Light Side Holder",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 1010,
+        "unit": "MT"
+      },
+      {
+        "name": "CABLE",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 380,
+        "unit": "MT"
+      },
+      {
+        "name": "CABLE 3 CORE 1.5 SQMM SCREEN SHIELD",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 1,
+        "outVal": 380,
+        "unit": "MT"
+      },
+      {
+        "name": "Heatshrinkable Straight Through Joint",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 13,
+        "outVal": 91,
+        "unit": "MT"
+      },
+      {
+        "name": "HEAT SHRINK TUBE 128MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 13,
+        "outVal": 91,
+        "unit": "MT"
+      },
+      {
+        "name": "HEAT SHRINK TUBE 55MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4.5,
+        "outVal": 36,
+        "unit": "MT"
+      },
+      {
+        "name": "HEAT SHRINK TUBE 73MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4.5,
+        "outVal": 36,
+        "unit": "MT"
+      },
+      {
+        "name": "Goggles",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 43.5,
+        "outVal": 3045,
+        "unit": "MT"
+      },
+      {
+        "name": "Differential Pressure",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 10,
+        "outVal": 250,
+        "unit": "MT"
+      },
+      {
+        "name": "THERMOSTAT",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 24,
+        "outVal": 1320,
+        "unit": "MT"
+      },
+      {
+        "name": "THERMOWELL",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 24,
+        "outVal": 1320,
+        "unit": "MT"
+      },
+      {
+        "name": "LED Strip HV Flex",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 40.5,
+        "outVal": 313.875,
+        "unit": "MT"
+      },
+      {
+        "name": "LED TUBELIGHT 20 W",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 40.5,
+        "outVal": 313.875,
+        "unit": "MT"
+      },
+      {
+        "name": "Led Tube Light Strip 18/20 Watt",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4,
+        "outVal": 34,
+        "unit": "MT"
+      },
+      {
+        "name": "MPCB RANGE -1-1.6 AMP",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 4,
+        "outVal": 34,
+        "unit": "MT"
+      },
+      {
+        "name": "TRIPOD STAND",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 2,
+        "outVal": 140,
+        "unit": "MT"
+      },
+      {
+        "name": "QRT Protection Tube 850",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 7,
+        "outVal": 490,
+        "unit": "MT"
+      },
+      {
+        "name": "THERMOCOUPLE 6X850MM",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 7,
+        "outVal": 490,
+        "unit": "MT"
+      },
+      {
+        "name": "OPEN SPANNER 10X11",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 42,
+        "unit": "MT"
+      },
+      {
+        "name": "Open Spanner (6-7 to 30-32)",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.5,
+        "outVal": 42,
+        "unit": "MT"
+      },
+      {
+        "name": "Phiroza Blue Paint",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 17.43,
+        "outVal": 1459.8,
+        "unit": "MT"
+      },
+      {
+        "name": "Pre Filter",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 17.43,
+        "outVal": 1459.8,
+        "unit": "MT"
+      },
+      {
+        "name": "PROTECHTION TUBE LENGTH-800MM,OD-25M SS-310",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.75,
+        "outVal": 63,
+        "unit": "MT"
+      },
+      {
+        "name": "Qrt Protection  Tub 21x850",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0.75,
+        "outVal": 63,
+        "unit": "MT"
+      },
+      {
+        "name": "SNV522-L-DH-U",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 13.885,
+        "outVal": 1166.34,
+        "unit": "MT"
+      },
+      {
+        "name": "SONAM COLOUR CONE",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 13.885,
+        "outVal": 1166.34,
+        "unit": "MT"
+      }
+    ]
+  },
+  {
+    "name": "Finished Goods",
+    "inQty": 624.97,
+    "inVal": 0,
+    "outQty": 0,
+    "outVal": 35584,
+    "items": [
+      {
+        "name": "Co Product / By Product",
+        "inQty": 0,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 35584,
+        "unit": "MT"
+      },
+      {
+        "name": "Finished Goods",
+        "inQty": 312.485,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      },
+      {
+        "name": "SPONGE IRON",
+        "inQty": 312.485,
+        "inVal": 0,
+        "outQty": 0,
+        "outVal": 0,
+        "unit": "MT"
+      }
+    ]
+  }
+]

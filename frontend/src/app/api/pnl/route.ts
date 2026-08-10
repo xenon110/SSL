@@ -277,3 +277,5 @@ export async function GET(request: Request) {
     return NextResponse.json(getEmptyPnlState());
   }
 }
+
+export const runtime = 'edge';

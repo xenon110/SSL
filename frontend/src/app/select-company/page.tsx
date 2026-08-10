@@ -36,7 +36,8 @@ export default function SelectCompanyPage() {
   };
 
   useEffect(() => {
-    router.replace("/dashboard");
+    // We can keep this commented out or redirect to /executive
+    // router.replace("/executive");
   }, [router]);
 
   const handleSelect = async (companyName: string) => {
@@ -53,7 +54,7 @@ export default function SelectCompanyPage() {
 
     // 2. Simulating a brief delay for the "sync" feel before redirecting
     setTimeout(() => {
-      router.push("/dashboard");
+      router.push("/executive");
     }, 1000);
   };
 

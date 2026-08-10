@@ -412,3 +412,5 @@ export async function GET(request: Request) {
     return NextResponse.json(getEmptyBalanceSheetState());
   }
 }
+
+export const runtime = 'edge';

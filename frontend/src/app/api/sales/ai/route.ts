@@ -192,3 +192,5 @@ The JSON object MUST follow this exact structure:
     });
   }
 }
+
+export const runtime = 'edge';

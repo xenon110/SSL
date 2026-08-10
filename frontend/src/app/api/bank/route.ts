@@ -36,3 +36,5 @@ export async function GET() {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export const runtime = 'edge';
