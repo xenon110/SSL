@@ -20,97 +20,52 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    // Fetch all sales vouchers
-    const query = supabase
-      .from('vouchers')
-      .select('date, amount, party_ledger_name')
-      .eq('company_id', comp.id)
-      .eq('is_deleted', false)
-      .eq('is_cancelled', false)
-      .eq('is_optional', false)
-      .or('voucher_type_name.ilike.%sales%,voucher_type_name.ilike.%pos invoice%');
+    // Fetch highly aggregated data from Materialized Views instead of raw vouchers
+    const { data: dailySales } = await fetchAllData(
+        supabase.from('mv_daily_sales').select('date, total_sales, voucher_count').eq('company_id', comp.id)
+    );
 
-    const { data: vouchers, error } = await fetchAllData(query);
-
-    if (error) {
-      throw error;
-    }
-
-    if (!vouchers || vouchers.length === 0) {
-      return NextResponse.json({
-        data: {
-          "Revenue Today": 0,
-          "Revenue This Month": 0,
-          "Revenue Last Month": 0,
-          "Revenue This Quarter": 0,
-          "Revenue This Year": 0,
-          "Average Invoice Value": 0,
-          "Number of Sales": 0,
-          "Revenue Growth %": "0.0%",
-          "Repeat Customer %": "0.0%",
-        }
-      });
-    }
-
-    const now = new Date();
-    // For reliable date comparisons, normalize to YYYY-MM-DD
-    const todayStr = now.toISOString().split('T')[0];
-    
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    
-    const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-    const lastMonthStr = lastMonthDate.toISOString().slice(0, 7); // YYYY-MM
-    
-    const currentMonthStr = now.toISOString().slice(0, 7);
-    
-    const currentQuarter = Math.floor(currentMonth / 3);
-    const currentYearStr = currentYear.toString();
+    const { data: customerSales } = await fetchAllData(
+        supabase.from('mv_customer_sales').select('tx_count').eq('company_id', comp.id)
+    );
 
     let revenueToday = 0;
     let revenueThisMonth = 0;
     let revenueLastMonth = 0;
     let revenueThisQuarter = 0;
     let revenueThisYear = 0;
-    
     let totalRevenue = 0;
-    
-    const customerTxCounts: Record<string, number> = {};
+    let numberOfSales = 0;
 
-    vouchers.forEach((v: any) => {
-      const amt = Number(v.amount) || 0;
-      const d = v.date; // Format: YYYY-MM-DD
-      
-      totalRevenue += amt;
-      
-      if (d === todayStr) {
-        revenueToday += amt;
-      }
-      
-      if (d.startsWith(currentMonthStr)) {
-        revenueThisMonth += amt;
-      }
-      
-      if (d.startsWith(lastMonthStr)) {
-        revenueLastMonth += amt;
-      }
-      
-      if (d.startsWith(currentYearStr)) {
-        revenueThisYear += amt;
-      }
-      
-      // Quarter logic
-      const vDate = new Date(d);
-      if (vDate.getFullYear() === currentYear && Math.floor(vDate.getMonth() / 3) === currentQuarter) {
-        revenueThisQuarter += amt;
-      }
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentQuarter = Math.floor(currentMonth / 3);
+    const currentYearStr = currentYear.toString();
+    const currentMonthStr = now.toISOString().slice(0, 7);
+    const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+    const lastMonthStr = lastMonthDate.toISOString().slice(0, 7);
 
-      // Customer count for repeat customer %
-      const customer = v.party_ledger_name || "Cash";
-      customerTxCounts[customer] = (customerTxCounts[customer] || 0) + 1;
+    (dailySales || []).forEach((row: any) => {
+        const d = row.date;
+        const amt = Number(row.total_sales) || 0;
+        const count = Number(row.voucher_count) || 0;
+
+        totalRevenue += amt;
+        numberOfSales += count;
+
+        if (d === todayStr) revenueToday += amt;
+        if (d.startsWith(currentMonthStr)) revenueThisMonth += amt;
+        if (d.startsWith(lastMonthStr)) revenueLastMonth += amt;
+        if (d.startsWith(currentYearStr)) revenueThisYear += amt;
+        
+        const vDate = new Date(d);
+        if (vDate.getFullYear() === currentYear && Math.floor(vDate.getMonth() / 3) === currentQuarter) {
+            revenueThisQuarter += amt;
+        }
     });
 
-    const numberOfSales = vouchers.length;
     const averageInvoiceValue = numberOfSales > 0 ? (totalRevenue / numberOfSales) : 0;
     
     let revenueGrowth = 0;
@@ -118,12 +73,12 @@ export async function GET(request: Request) {
       revenueGrowth = ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100;
     }
 
-    const uniqueCustomers = Object.keys(customerTxCounts).length;
+    let uniqueCustomers = 0;
     let repeatCustomers = 0;
-    Object.values(customerTxCounts).forEach(count => {
-      if (count > 1) repeatCustomers++;
+    (customerSales || []).forEach((c: any) => {
+        uniqueCustomers++;
+        if (Number(c.tx_count) > 1) repeatCustomers++;
     });
-    
     const repeatCustomerPercent = uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0;
 
     return NextResponse.json({
@@ -139,9 +94,10 @@ export async function GET(request: Request) {
         "Repeat Customer %": `${repeatCustomerPercent.toFixed(1)}%`,
       }
     });
-
   } catch (error: any) {
     console.error("Revenue API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export const runtime = 'edge';

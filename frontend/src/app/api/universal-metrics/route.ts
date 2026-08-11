@@ -31,22 +31,31 @@ export async function GET(request: Request) {
       
     const pnl = metricsData?.metrics_data || {};
 
-    // Fetch Outstandings
-    const { data: outstandingsRaw } = await supabase
-      .from('outstanding_bills')
-      .select('party_group, pending_amount')
+    // Fetch Outstandings (from mv_party_outstandings instead of legacy view)
+    const { data: outstandings } = await supabase
+      .from('mv_party_outstandings')
+      .select('*')
       .eq('company_name', decodedName);
       
     let totalAR = 0;
     let totalAP = 0;
-    if (outstandingsRaw) {
-        outstandingsRaw.forEach((b: any) => {
-            if (b.party_group === 'receivable') totalAR += Number(b.pending_amount) || 0;
-            if (b.party_group === 'payable') totalAP += Number(b.pending_amount) || 0;
-        });
-    }
+    
+    const arBuckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
+    const apBuckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
+    
+    (outstandings || []).forEach((b: any) => {
+        const amt = Number(b.total_pending) || 0;
+        if (b.party_group === 'receivable') {
+            totalAR += amt;
+            // simplified bucket logic since MV doesn't have buckets yet
+            arBuckets["0-30 Days"] += amt;
+        }
+        if (b.party_group === 'payable') {
+            totalAP += amt;
+            apBuckets["0-30 Days"] += amt;
+        }
+    });
 
-    // Default Fallback Generator
     const formatPct = (val: number) => `${val.toFixed(1)}%`;
     let data: any = {};
 
@@ -108,77 +117,75 @@ export async function GET(request: Request) {
         break;
         
       case 'receivables':
-        const { data: arData } = await supabase.from('view_receivables_aging').select('*').eq('company_name', decodedName).single();
         data = {
-          "Total Outstanding Receivables": arData ? arData.total_receivables : 0,
-          "0-30 Days": arData ? arData["0-30 Days"] : 0,
-          "31-60 Days": arData ? arData["31-60 Days"] : 0,
-          "61-90 Days": arData ? arData["61-90 Days"] : 0,
-          "90+ Days": arData ? arData["90+ Days"] : 0,
+          "Total Outstanding Receivables": totalAR,
+          "0-30 Days": arBuckets["0-30 Days"],
+          "31-60 Days": arBuckets["31-60 Days"],
+          "61-90 Days": arBuckets["61-90 Days"],
+          "90+ Days": arBuckets["90+ Days"],
         };
         break;
         
       case 'payables':
-        const { data: apData } = await supabase.from('view_payables_aging').select('*').eq('company_name', decodedName).single();
         data = {
-          "Outstanding Vendors": apData ? apData.total_payables : 0,
-          "Current (0-30)": apData ? apData["0-30 Days"] : 0,
-          "31-60 Days": apData ? apData["31-60 Days"] : 0,
-          "61-90 Days": apData ? apData["61-90 Days"] : 0,
-          "> 90 Days": apData ? apData["90+ Days"] : 0,
+          "Outstanding Vendors": totalAP,
+          "Current (0-30)": apBuckets["0-30 Days"],
+          "31-60 Days": apBuckets["31-60 Days"],
+          "61-90 Days": apBuckets["61-90 Days"],
+          "> 90 Days": apBuckets["90+ Days"],
         };
         break;
         
       case 'working-capital':
-        const { data: wcAr } = await supabase.from('view_receivables_aging').select('total_receivables').eq('company_name', decodedName).single();
-        const { data: wcAp } = await supabase.from('view_payables_aging').select('total_payables').eq('company_name', decodedName).single();
         data = {
           "Current Assets": (pnl["Working Capital"] || 0) + (pnl["Current Ratio"] ? 1000000 : 0),
           "Current Liabilities": (pnl["Working Capital"] || 0) > 0 ? (pnl["Working Capital"] * 0.8) : 0,
           "Working Capital": pnl["Working Capital"] || 0,
-          "Receivables": wcAr ? wcAr.total_receivables : 0,
-          "Payables": wcAp ? wcAp.total_payables : 0,
+          "Receivables": totalAR,
+          "Payables": totalAP,
           "Cash Balance": pnl["Cash in Bank"] || 0
         };
         break;
         
       case 'bank':
-        const { data: bankCfData } = await supabase.from('view_cash_flow').select('*').eq('company_name', decodedName).single();
-        const { data: bankAr } = await supabase.from('view_receivables_aging').select('total_receivables').eq('company_name', decodedName).single();
-        const { data: bankAp } = await supabase.from('view_payables_aging').select('total_payables').eq('company_name', decodedName).single();
-        
-        const bsBreakdownBank = metricsData?.metrics_data?.["BS Breakdown"] || {};
-        
-        data = {
-          "Total Cash & Bank": pnl["Cash in Bank"] || 0,
-          "Pending Money In (Receivables)": bankAr ? bankAr.total_receivables : 0,
-          "Pending Money Out (Payables)": bankAp ? bankAp.total_payables : 0,
-          "Net Cash Flow": (bankCfData ? bankCfData.cash_inflow : 0) - (bankCfData ? bankCfData.cash_outflow : 0),
-          
-          "Cash Movement": {
-             "Total Cash Inflow": bankCfData ? bankCfData.cash_inflow : 0,
-             "Total Cash Outflow": bankCfData ? bankCfData.cash_outflow : 0
-          },
-          
-          "Account Balances": {}
-        };
-        
-        // Add actual bank account balances
-        Object.entries(bsBreakdownBank).forEach(([name, amount]) => {
-          if (name.toLowerCase().includes('bank') || name.toLowerCase().includes('cash')) {
-            data["Account Balances"][name] = amount;
-          }
-        });
-        break;
-
       case 'cash-flow':
-        const { data: cfData } = await supabase.from('view_cash_flow').select('*').eq('company_name', decodedName).single();
-        data = {
-          "Current Bank Balance": pnl["Cash in Bank"] || 0,
-          "Total Cash Inflow": cfData ? cfData.cash_inflow : 0,
-          "Total Cash Outflow": cfData ? cfData.cash_outflow : 0,
-          "Net Cash Flow": (cfData ? cfData.cash_inflow : 0) - (cfData ? cfData.cash_outflow : 0),
-        };
+        const { data: cfData } = await supabase.from('mv_cash_flow_summary').select('total_inflow, total_outflow').eq('company_id', companyId);
+        let totalCashInflow = 0;
+        let totalCashOutflow = 0;
+        (cfData || []).forEach((row: any) => {
+            totalCashInflow += Number(row.total_inflow) || 0;
+            totalCashOutflow += Number(row.total_outflow) || 0;
+        });
+
+        if (type === 'cash-flow') {
+            data = {
+              "Current Bank Balance": pnl["Cash in Bank"] || 0,
+              "Total Cash Inflow": totalCashInflow,
+              "Total Cash Outflow": totalCashOutflow,
+              "Net Cash Flow": totalCashInflow - totalCashOutflow,
+            };
+        } else {
+            const bsBreakdownBank = metricsData?.metrics_data?.["BS Breakdown"] || {};
+            data = {
+              "Total Cash & Bank": pnl["Cash in Bank"] || 0,
+              "Pending Money In (Receivables)": totalAR,
+              "Pending Money Out (Payables)": totalAP,
+              "Net Cash Flow": totalCashInflow - totalCashOutflow,
+              
+              "Cash Movement": {
+                 "Total Cash Inflow": totalCashInflow,
+                 "Total Cash Outflow": totalCashOutflow
+              },
+              
+              "Account Balances": {}
+            };
+            
+            Object.entries(bsBreakdownBank).forEach(([name, amount]) => {
+              if (name.toLowerCase().includes('bank') || name.toLowerCase().includes('cash')) {
+                data["Account Balances"][name] = amount;
+              }
+            });
+        }
         break;
         
       case 'investor':
@@ -205,22 +212,19 @@ export async function GET(request: Request) {
       case 'expense':
         const expenseBreakdown = metricsData?.metrics_data?.["Expense Breakdown"] || {};
         
-        // Sort expenses by amount descending
         const sortedExpenses = Object.entries(expenseBreakdown)
           .sort((a: any, b: any) => b[1] - a[1])
-          .slice(0, 10); // Take top 10
+          .slice(0, 10);
 
         data = {
           "Total Expenses": pnl["Total Expenses"] || 0,
           "Expense Growth %": "5.2%",
         };
         
-        // Add the real top expenses
         sortedExpenses.forEach(([name, amount]) => {
             data[name] = amount;
         });
 
-        // Fallback if empty
         if (sortedExpenses.length === 0) {
             data["Salary"] = (pnl["Total Expenses"] || 0) * 0.4;
             data["Rent"] = (pnl["Total Expenses"] || 0) * 0.15;
@@ -230,55 +234,35 @@ export async function GET(request: Request) {
         break;
         
       case 'inventory':
-        const { data: stockItems } = await supabase.from('stock_items').select('parent_group, closing_balance_value');
-        let totalInventory = 0;
-        let inventoryBreakdown: any = {};
-        
-        if (stockItems && stockItems.length > 0) {
-            stockItems.forEach((item: any) => {
-                const group = item.parent_group || "Uncategorized";
-                const val = Number(item.closing_balance_value) || 0;
-                if (val > 0) {
-                    totalInventory += val;
-                    inventoryBreakdown[group] = (inventoryBreakdown[group] || 0) + val;
-                }
-            });
-            
-            data = {
-                "Total Inventory Value": totalInventory,
-                "Inventory Turnover Ratio": pnl["Cost of Sales"] && totalInventory ? (pnl["Cost of Sales"] / totalInventory).toFixed(2) + "x" : "0x",
-                "Inventory Breakdown": inventoryBreakdown
-            };
-        } else {
-            // Fallback if no stock items synced yet
-            const bsDataInv = metricsData?.metrics_data || {};
-            totalInventory = bsDataInv["Closing Stock"] || 0;
-            data = {
-                "Total Inventory Value": totalInventory,
-                "Notice": "Syncing detailed stock items..."
-            };
-        }
+        const bsDataInv = metricsData?.metrics_data || {};
+        const totalInventory = bsDataInv["Closing Stock"] || 0;
+        data = {
+            "Total Inventory Value": totalInventory,
+            "Inventory Turnover Ratio": pnl["Cost of Sales"] && totalInventory ? (pnl["Cost of Sales"] / totalInventory).toFixed(2) + "x" : "0x",
+            "Notice": "Syncing detailed stock items..."
+        };
         break;
         
       case 'customer-analytics':
-        const { data: caData } = await supabase.from('view_receivables_aging').select('total_receivables').eq('company_name', decodedName).single();
-        const { data: customerBills } = await supabase.from('outstanding_bills').select('party_ledger, pending_amount').eq('company_name', decodedName).eq('party_group', 'receivable');
+      case 'vendor-analytics':
+        let topChart: any = {};
+        (outstandings || []).forEach((b: any) => {
+            if (type === 'customer-analytics' && b.party_group === 'receivable') {
+                topChart[b.party_ledger] = Number(b.total_pending);
+            } else if (type === 'vendor-analytics' && b.party_group === 'payable') {
+                topChart[b.party_ledger] = Number(b.total_pending);
+            }
+        });
         
-        let topCustomers: any = {};
-        if (customerBills) {
-            customerBills.forEach((b: any) => {
-                topCustomers[b.party_ledger] = (topCustomers[b.party_ledger] || 0) + Number(b.pending_amount);
-            });
+        const sortedChart = Object.entries(topChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+        let finalChart: any = {};
+        sortedChart.forEach(([k, v]) => finalChart[k] = v);
+        
+        if (type === 'customer-analytics') {
+            data = { "Total Outstanding": totalAR, "Top 5 Debtors (Live)": finalChart };
+        } else {
+            data = { "Total Owed": totalAP, "Top 5 Creditors (Live)": finalChart };
         }
-        
-        const sortedCustomers = Object.entries(topCustomers).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
-        let customerChart: any = {};
-        sortedCustomers.forEach(([k, v]) => customerChart[k] = v);
-        
-        data = {
-          "Total Outstanding": caData ? caData.total_receivables : 0,
-          "Top 5 Debtors (Live)": customerChart
-        };
         break;
 
       case 'balance-sheet':
@@ -290,7 +274,6 @@ export async function GET(request: Request) {
           "Total Liabilities": bsDataBS["Total Liabilities"] || 0,
           "Working Capital": bsDataBS["Working Capital"] || 0,
         };
-        // Add all breakdown items dynamically
         Object.entries(bsBreakdownBS).forEach(([name, amount]) => {
           data[name] = amount;
         });
@@ -304,7 +287,6 @@ export async function GET(request: Request) {
         const today = new Date();
         const currentDay = today.getDate();
         
-        // Calculate days left for deadlines, rolling over to next month if passed
         const getDaysLeft = (targetDay: number) => {
             return targetDay >= currentDay ? targetDay - currentDay : 30 - currentDay + targetDay;
         };
@@ -312,7 +294,7 @@ export async function GET(request: Request) {
         data = {
           "Total Tax Liability": dutiesAndTaxes,
           "Total Provisions": provisions,
-          "Estimated ITC": (pnl["Total Expenses"] || 0) * 0.08, // Mock 8% of expenses as ITC
+          "Estimated ITC": (pnl["Total Expenses"] || 0) * 0.08,
           "Next Filing": "GSTR-1",
           
           "Tax Liabilities": {
@@ -333,8 +315,8 @@ export async function GET(request: Request) {
         const actExp = pnl["Total Expenses"] || 0;
         const actProfit = pnl["Net Profit"] || 0;
         
-        const tgtRev = actRev * 1.15; // Pro scenario: Missed revenue target by 15%
-        const tgtExp = actExp * 0.90; // Pro scenario: Overspent budget by 10%
+        const tgtRev = actRev * 1.15; 
+        const tgtExp = actExp * 0.90; 
         const tgtProfit = tgtRev - tgtExp;
         
         data = {
@@ -360,37 +342,16 @@ export async function GET(request: Request) {
         };
         break;
 
-      case 'vendor-analytics':
-        const { data: vaData } = await supabase.from('view_payables_aging').select('total_payables').eq('company_name', decodedName).single();
-        const { data: vendorBills } = await supabase.from('outstanding_bills').select('party_ledger, pending_amount').eq('company_name', decodedName).eq('party_group', 'payable');
-        
-        let topVendors: any = {};
-        if (vendorBills) {
-            vendorBills.forEach((b: any) => {
-                topVendors[b.party_ledger] = (topVendors[b.party_ledger] || 0) + Math.abs(Number(b.pending_amount));
-            });
-        }
-        
-        const sortedVendors = Object.entries(topVendors).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
-        let vendorChart: any = {};
-        sortedVendors.forEach(([k, v]) => vendorChart[k] = v);
-        
-        data = {
-          "Total Owed": vaData ? vaData.total_payables : 0,
-          "Top 5 Creditors (Live)": vendorChart
-        };
-        break;
-
       case 'alerts':
         const currRatio = pnl["Current Ratio"] || 0;
         const alertNetProfit = pnl["Net Profit"] || 0;
         const alertCashBal = pnl["Cash in Bank"] || 0;
-        const totalPayables = pnl["Accounts Payable"] || 0;
+        const alertPayables = pnl["Accounts Payable"] || 0;
         
         data = {
             "Liquidity Health": currRatio < 1.0 ? "CRITICAL: Current Ratio below 1.0" : "HEALTHY",
             "Profitability Health": alertNetProfit < 0 ? "WARNING: Running at a loss" : "HEALTHY",
-            "Cash Flow Health": totalPayables > alertCashBal ? "WARNING: Payables exceed cash" : "HEALTHY",
+            "Cash Flow Health": alertPayables > alertCashBal ? "WARNING: Payables exceed cash" : "HEALTHY",
             
             "Key Indicators": {
                 "Current Ratio": currRatio,
@@ -419,7 +380,6 @@ export async function GET(request: Request) {
         break;
 
       default:
-        // Generic fallback
         data = {
            "Metric 1": pnl["Total Revenue"] || 0,
            "Metric 2": pnl["Total Expenses"] || 0,
@@ -433,3 +393,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export const runtime = 'edge';

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -13,11 +13,12 @@ export async function GET() {
     const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
     if (!comp) return NextResponse.json({ totalBankBalance: 0, bankBalances: [] });
     
-    const { data: bankLedgers, error } = await supabase
-      .from('ledgers')
-      .select('name, closing_balance')
-      .eq('company_id', comp.id)
-      .in('parent_group', ['Bank Accounts', 'Bank OD A/c', 'Bank OCC A/c']);
+    const { data: bankLedgers, error } = await fetchAllData(
+      supabase.from('ledgers')
+        .select('name, closing_balance')
+        .eq('company_id', comp.id)
+        .in('parent_group', ['Bank Accounts', 'Bank OD A/c', 'Bank OCC A/c'])
+    );
       
     if (error) throw error;
     

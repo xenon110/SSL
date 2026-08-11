@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabase, fetchAllData } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 const getEmptyOverviewState = () => ({
   sales: 0,
   purchases: 0,
@@ -33,117 +35,84 @@ export async function GET(request: Request) {
     if (comp) {
       companyId = comp.id;
     } else {
-      const { data: bkmComp } = await supabase.from('companies').select('id').eq('name', 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)').single();
-      if (bkmComp) {
-        companyId = bkmComp.id;
-      } else {
         return NextResponse.json(getEmptyOverviewState());
-      }
     }
 
-    let query = supabase.from('vouchers').select('*').eq('company_id', companyId)
-      .eq('is_deleted', false)
-      .eq('is_cancelled', false)
-      .eq('is_optional', false);
-    if (startDate) query = query.gte('date', startDate);
-    if (endDate) query = query.lte('date', endDate);
+    const [
+        { data: salesData },
+        { data: incExpData },
+        { data: cfData },
+        { data: ledgers }
+    ] = await Promise.all([
+        fetchAllData(supabase.from('mv_daily_sales').select('*').eq('company_id', companyId)),
+        fetchAllData(supabase.from('mv_income_expense').select('*').eq('company_id', companyId)),
+        fetchAllData(supabase.from('mv_cash_flow_summary').select('*').eq('company_id', companyId)),
+        fetchAllData(supabase.from('ledgers').select('name, parent_group').eq('company_id', companyId))
+    ]);
 
-    const { data: vouchers, error } = await fetchAllData(query);
-    if (error) throw error;
+    const ledgerGroupMap = new Map();
+    (ledgers || []).forEach((l: any) => ledgerGroupMap.set(l.name, l.parent_group));
 
-    // Fetch expense ledgers mapping
-    const { data: expenseLedgers } = await supabase
-      .from('ledgers')
-      .select('name, parent_group')
-      .eq('company_id', companyId)
-      .or('parent_group.ilike.%expense%,parent_group.ilike.%wages%,parent_group.ilike.%salaries%,parent_group.ilike.%fuel%,parent_group.ilike.%power%');
+    const directIncomeGroups = ['Sales Accounts', 'Direct Incomes', 'Sales - Sponge Iron'];
+    const directExpenseGroups = ['Purchase Accounts', 'Direct Expenses', 'Purchase Under GST Law'];
+    
+    let directIncome = 0;
+    let indirectIncome = 0;
+    let directExpense = 0;
+    let indirectExpense = 0;
 
-    const directExpenseLedgers = new Set<string>();
-    const indirectExpenseLedgers = new Set<string>();
-
-    expenseLedgers?.forEach(l => {
-      const pg = (l.parent_group || '').toLowerCase();
-      // Match direct expenses and direct costs
-      if (pg.includes('direct') || pg.includes('wages') || pg.includes('power') || pg.includes('fuel')) {
-        directExpenseLedgers.add(l.name);
-      } else {
-        indirectExpenseLedgers.add(l.name);
-      }
-    });
-
-    let directExpenses = 0;
-    let indirectExpenses = 0;
-    const allExpenseLedgerNames = [...directExpenseLedgers, ...indirectExpenseLedgers];
-
-    if (allExpenseLedgerNames.length > 0) {
-      let ledgQuery = supabase
-        .from('voucher_ledgers')
-        .select('ledger_name, amount, is_debit, vouchers!inner(date, company_id, is_deleted, is_cancelled, is_optional)')
-        .eq('vouchers.company_id', companyId)
-        .eq('vouchers.is_deleted', false)
-        .eq('vouchers.is_cancelled', false)
-        .eq('vouchers.is_optional', false)
-        .in('ledger_name', allExpenseLedgerNames);
-        
-      if (startDate) ledgQuery = ledgQuery.gte('vouchers.date', startDate);
-      if (endDate) ledgQuery = ledgQuery.lte('vouchers.date', endDate);
-      
-      const { data: ledgerLines } = await fetchAllData(ledgQuery);
-      
-      ledgerLines?.forEach((line: any) => {
-        const amt = Number(line.amount) || 0;
-        if (directExpenseLedgers.has(line.ledger_name)) {
-          directExpenses += amt;
-        } else {
-          indirectExpenses += amt;
-        }
-      });
-    }
-
-    let totalSales = 0;
-    let totalPurchases = 0;
-    let receiptCount = 0;
-    let totalReceipts = 0;
-    let totalPayments = 0;
+    let totalPurchases = 0; // Total from purchase accounts specifically
 
     const monthlySales: Record<string, number> = {};
     const monthlyPurchases: Record<string, number> = {};
-    
-    // Grouping variables for charts
-    const salesTrend: any[] = [];
-    const purchaseTrend: any[] = [];
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    vouchers?.forEach((v: any) => {
-      const type = v.voucher_type_name?.toLowerCase();
-      const val = Number(v.amount) || 0;
-      const vDate = new Date(v.date);
-      const monthKey = monthNames[vDate.getMonth()];
+    (incExpData || []).forEach((row: any) => {
+        const amt = Number(row.net_amount) || 0;
+        const group = ledgerGroupMap.get(row.ledger_name) || '';
+        const m = new Date(row.tx_month).getMonth();
+        const mKey = monthNames[m];
 
-      if (type.includes('sale')) {
-        totalSales += val;
-        monthlySales[monthKey] = (monthlySales[monthKey] || 0) + val;
-      }
-      else if (type.includes('purchase')) {
-        totalPurchases += val;
-        monthlyPurchases[monthKey] = (monthlyPurchases[monthKey] || 0) + val;
-      }
-      else if (type.includes('receipt')) {
-        totalReceipts += val;
-        receiptCount++;
-      }
-      else if (type.includes('payment')) {
-        totalPayments += val;
-      }
+        if (row.tx_type === 'INCOME') {
+            if (directIncomeGroups.includes(group)) directIncome += amt;
+            else indirectIncome += amt;
+        } else if (row.tx_type === 'EXPENSE') {
+            if (directExpenseGroups.includes(group)) {
+                directExpense += amt;
+                if (group === 'Purchase Accounts' || group === 'Purchase Under GST Law') {
+                    totalPurchases += amt;
+                    monthlyPurchases[mKey] = (monthlyPurchases[mKey] || 0) + amt;
+                }
+            }
+            else indirectExpense += amt;
+        }
     });
 
+    let totalSales = 0;
+    (salesData || []).forEach((row: any) => {
+        const amt = Number(row.total_sales) || 0;
+        totalSales += amt;
+        const mKey = monthNames[new Date(row.date).getMonth()];
+        monthlySales[mKey] = (monthlySales[mKey] || 0) + amt;
+    });
+
+    let totalReceipts = 0;
+    let totalPayments = 0;
+    (cfData || []).forEach((row: any) => {
+        totalReceipts += Number(row.total_inflow) || 0;
+        totalPayments += Number(row.total_outflow) || 0;
+    });
+
+    const salesTrend: any[] = [];
+    const purchaseTrend: any[] = [];
     const combinedTrend: any[] = [];
+
     monthNames.forEach(month => {
       const s = monthlySales[month] || 0;
       const p = monthlyPurchases[month] || 0;
       if (s > 0 || p > 0) {
-        if (monthlySales[month]) salesTrend.push({ name: month, total: s });
-        if (monthlyPurchases[month]) purchaseTrend.push({ name: month, total: p });
+        if (s > 0) salesTrend.push({ name: month, total: s });
+        if (p > 0) purchaseTrend.push({ name: month, total: p });
         combinedTrend.push({ month, sales: s, purchases: p, margin: s - p });
       }
     });
@@ -151,8 +120,8 @@ export async function GET(request: Request) {
     const liveData = {
       sales: totalSales,
       purchases: totalPurchases,
-      grossProfit: totalSales - totalPurchases - directExpenses,
-      netProfit: totalSales - totalPurchases - directExpenses - indirectExpenses,
+      grossProfit: directIncome - directExpense,
+      netProfit: (directIncome + indirectIncome) - (directExpense + indirectExpense),
       totalReceipts,
       totalPayments,
       salesTrend: salesTrend.length ? salesTrend : [{name: 'No Data', total: 0}],

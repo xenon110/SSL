@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, fetchAllData } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -13,46 +13,61 @@ export async function GET() {
     const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
     if (!comp) return NextResponse.json({ dso: 0, target: 0, collected: 0 });
     
-    // Compute collected from Receipt vouchers in the last 30 days
+    // Compute collected from mv_cash_flow_summary for the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
     
-    const { data: receipts } = await supabase
-      .from('vouchers')
-      .select('amount')
-      .eq('company_id', comp.id)
-      .eq('is_deleted', false)
-      .eq('is_cancelled', false)
-      .eq('is_optional', false)
-      .ilike('voucher_type_name', '%receipt%')
-      .gte('date', dateStr);
+    const { data: cfData } = await fetchAllData(
+        supabase.from('mv_cash_flow_summary')
+            .select('total_inflow')
+            .eq('company_id', comp.id)
+            .gte('date', dateStr)
+    );
       
-    const collected = (receipts || []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    let collected = 0;
+    (cfData || []).forEach((row: any) => {
+        collected += Number(row.total_inflow) || 0;
+    });
+
+    const target = collected * 1.2; // 20% higher than last 30 days as a dynamic target
     
-    // Target collection can be overdue receivables
-    const { data: overdueBills } = await supabase
-      .from('outstanding_bills')
-      .select('pending_amount')
-      .eq('company_name', decodedName)
-      .eq('party_group', 'receivable');
-    const target = (overdueBills || []).reduce((sum, b) => sum + (Number(b.pending_amount) || 0), 0);
+    // DSO Calculation
+    const { data: outstandings } = await fetchAllData(
+        supabase.from('mv_party_outstandings')
+            .select('total_pending')
+            .eq('company_name', decodedName)
+            .eq('party_group', 'receivable')
+    );
+      
+    let totalReceivables = 0;
+    (outstandings || []).forEach((o: any) => totalReceivables += (Number(o.total_pending) || 0));
+
+    // Fetch total sales from mv_daily_sales for the last 365 days to calculate DSO
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const yearAgoStr = oneYearAgo.toISOString().split('T')[0];
+
+    const { data: salesData } = await fetchAllData(
+        supabase.from('mv_daily_sales')
+            .select('total_sales')
+            .eq('company_id', comp.id)
+            .gte('date', yearAgoStr)
+    );
+
+    let totalAnnualSales = 0;
+    (salesData || []).forEach((s: any) => totalAnnualSales += (Number(s.total_sales) || 0));
+
+    const dso = totalAnnualSales > 0 ? (totalReceivables / totalAnnualSales) * 365 : 0;
     
-    // DSO calculation: (receivables / total credit sales) * 365
-    const { data: sales } = await supabase
-      .from('vouchers')
-      .select('amount')
-      .eq('company_id', comp.id)
-      .eq('is_deleted', false)
-      .eq('is_cancelled', false)
-      .eq('is_optional', false)
-      .ilike('voucher_type_name', '%sale%');
-    const totalSales = (sales || []).reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
-    const dso = totalSales > 0 ? Math.round((target / totalSales) * 365) : 30;
-    
-    return NextResponse.json({ dso, target, collected });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({
+      dso: Math.round(dso),
+      target,
+      collected
+    });
+  } catch (error: any) {
+    console.error('Collection API Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 

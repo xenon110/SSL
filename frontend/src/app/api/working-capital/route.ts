@@ -13,36 +13,25 @@ export async function GET() {
     const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
     if (!comp) return NextResponse.json({ currentAssets: 0, currentLiabilities: 0, currentRatio: 0 });
     
-    // 1. Fetch receivables total
-    const { data: recBills } = await supabase
-      .from('outstanding_bills')
-      .select('pending_amount')
-      .eq('company_name', decodedName)
-      .eq('party_group', 'receivable');
-    const totalReceivables = (recBills || []).reduce((sum, b) => sum + (Number(b.pending_amount) || 0), 0);
+    const [
+      { data: outstanding },
+      { data: liqLedgers },
+      { data: inventory }
+    ] = await Promise.all([
+      supabase.from('mv_outstanding_summary').select('*').eq('company_name', decodedName),
+      supabase.from('ledgers').select('closing_balance').eq('company_id', comp.id).in('parent_group', ['Bank Accounts', 'Cash-in-Hand', 'Bank OD A/c', 'Bank OCC A/c']),
+      supabase.from('mv_inventory_valuation').select('*').eq('company_id', comp.id)
+    ]);
+
+    let totalReceivables = 0;
+    let totalPayables = 0;
+    (outstanding || []).forEach((row: any) => {
+        if (row.party_group === 'receivable') totalReceivables += Number(row.total_pending) || 0;
+        if (row.party_group === 'payable') totalPayables += Number(row.total_pending) || 0;
+    });
     
-    // 2. Fetch payables total
-    const { data: payBills } = await supabase
-      .from('outstanding_bills')
-      .select('pending_amount')
-      .eq('company_name', decodedName)
-      .eq('party_group', 'payable');
-    const totalPayables = (payBills || []).reduce((sum, b) => sum + (Number(b.pending_amount) || 0), 0);
-    
-    // 3. Fetch cash/bank balances
-    const { data: liqLedgers } = await supabase
-      .from('ledgers')
-      .select('closing_balance')
-      .eq('company_id', comp.id)
-      .in('parent_group', ['Bank Accounts', 'Cash-in-Hand', 'Bank OD A/c', 'Bank OCC A/c']);
     const totalCashBank = (liqLedgers || []).reduce((sum, l) => sum + (Number(l.closing_balance) || 0), 0);
-    
-    // 4. Fetch inventory balance
-    const { data: stockItems } = await supabase
-      .from('stock_items')
-      .select('closing_balance_value')
-      .eq('company_id', comp.id);
-    const totalInventoryValue = (stockItems || []).reduce((sum, s) => sum + (Number(s.closing_balance_value) || 0), 0);
+    const totalInventoryValue = (inventory || []).reduce((sum, s) => sum + (Number(s.total_value) || 0), 0);
     
     const currentAssets = totalReceivables + totalCashBank + totalInventoryValue;
     const currentLiabilities = totalPayables;

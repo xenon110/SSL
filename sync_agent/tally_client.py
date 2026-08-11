@@ -2,6 +2,7 @@ import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import re
+import io
 
 def clean_xml(xml_str):
     if not xml_str: return xml_str
@@ -545,14 +546,20 @@ class TallyClient:
             print(f"Failed to parse Balance Sheet XML: {e}")
         return data
 
+    def _iter_vouchers(self, xml_str):
+        context = ET.iterparse(io.StringIO(xml_str), events=("end",))
+        for event, elem in context:
+            if elem.tag == "VOUCHER":
+                yield elem
+                elem.clear()
+
     def parse_vouchers(self, xml_response):
         """Parse voucher data from Tally XML response."""
         vouchers = []
         if not xml_response: return vouchers
         try:
             cleaned_xml = clean_xml(xml_response)
-            root = ET.fromstring(cleaned_xml)
-            for voucher_node in root.findall('.//VOUCHER'):
+            for voucher_node in self._iter_vouchers(cleaned_xml):
                 raw_date = voucher_node.findtext("DATE")
                 # Tally sends date as YYYYMMDD (e.g. 20260705). Convert to YYYY-MM-DD
                 if raw_date and len(raw_date) >= 8:

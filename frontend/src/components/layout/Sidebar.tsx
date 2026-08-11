@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { title: "AI CFO Chatbot", href: "/ai-cfo", icon: Bot },
   { title: "Executive Summary", href: "/executive", icon: LayoutDashboard },
   { title: "Revenue Dashboard", href: "/revenue", icon: TrendingUp },
   { title: "Profitability Dashboard", href: "/profitability", icon: PieChart },
@@ -68,27 +67,22 @@ export function Sidebar() {
           <p className="text-xs text-muted-foreground mt-1">Financial Intelligence</p>
         </div>
         <ul className="space-y-1 font-medium">
-          {navItems.map((item) => {
-            const isAi = item.href === '/ai-cfo';
-            return (
-            <li key={item.href} className={isAi ? "pb-4 border-b border-slate-100 mb-4" : ""}>
+          {navItems.map((item) => (
+            <li key={item.href}>
               <Link
                 href={item.href}
                 className={cn(
                   "flex items-center rounded-lg px-3 py-2 text-sm transition-all",
                   pathname === item.href 
-                    ? (isAi ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "bg-accent text-accent-foreground")
-                    : (isAi 
-                        ? "bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 border border-indigo-100/50" 
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground")
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
-                <item.icon className={cn("mr-3 h-4 w-4", isAi && pathname !== item.href ? "text-indigo-600" : "")} />
+                <item.icon className="mr-3 h-4 w-4" />
                 {item.title}
-                {isAi && <span className="ml-auto flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>}
               </Link>
             </li>
-          )})}
+          ))}
         </ul>
       </div>
     </aside>

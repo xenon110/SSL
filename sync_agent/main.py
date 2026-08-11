@@ -617,6 +617,13 @@ def sync_company(sb, company_name: str):
         update_checkpoint(sb, company_id, max_alter_id, sync_id)
         log(f"  Checkpoint updated to ALTERID={max_alter_id}")
 
+    try:
+        log("  Refreshing materialized views...")
+        sb.rpc("refresh_materialized_views", {}).execute()
+        log("  Materialized views refreshed.")
+    except Exception as e:
+        log(f"  Failed to refresh materialized views: {e}", "WARN")
+
     # 8. Log sync
     sync_end = datetime.datetime.now(datetime.timezone.utc)
     duration_ms = int((sync_end - sync_start).total_seconds() * 1000)
