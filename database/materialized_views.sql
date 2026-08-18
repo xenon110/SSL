@@ -9,7 +9,7 @@ SELECT
     COUNT(id) as voucher_count
 FROM vouchers
 WHERE voucher_type_name ILIKE '%sale%' 
-   OR voucher_type_name ILIKE '%receipt%'
+   OR voucher_type_name = 'POS Invoice'
 GROUP BY company_id, date;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_daily_sales_unique ON mv_daily_sales(company_id, date);
@@ -270,7 +270,7 @@ JOIN voucher_ledgers vl ON v.id = vl.voucher_id
 JOIN target_ledgers tl ON vl.ledger_name = tl.name AND v.company_id = tl.company_id
 GROUP BY v.company_id, DATE_TRUNC('month', v.date), vl.ledger_name, CASE WHEN tl.parent_group IN ('Direct Incomes', 'Indirect Incomes', 'Sales Accounts', 'Sales - Sponge Iron') THEN 'INCOME' ELSE 'EXPENSE' END;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_income_expense_unique ON mv_income_expense(company_id, tx_month, ledger_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_income_expense_unique ON mv_income_expense(company_id, tx_month, ledger_name, tx_type);
 
 -- 15. Working Capital Materialized View
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_working_capital AS

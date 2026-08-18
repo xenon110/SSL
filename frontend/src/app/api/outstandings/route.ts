@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabase, fetchAllData } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 const getEmptyOutstandingsState = () => ({
   kpis: {
     totalReceivables: 0,
@@ -47,19 +49,21 @@ export async function GET(request: Request) {
     
     const { data: mvData, error: mvError } = await fetchAllData(query);
     if (mvError) {
-        // Fallback or handle error. If the MV doesn't exist yet, this will fail.
-        console.error('Materialized view fetch error. Ensure mv_party_outstandings is created:', mvError);
-        throw mvError;
+      // If the MV doesn't exist yet, this will fail.
+      console.error('Materialized view fetch error. Ensure mv_party_outstandings is created:', mvError);
+      throw mvError;
     }
 
     // 2. Fetch Ledgers to get credit limits, contact info, etc.
-    const { data: ledgers, error: ledgersError } = await supabase
+    // Bug #15 fix: filter by company_id to prevent cross-company ledger name collisions.
+    const { data: ledgers } = await supabase
       .from('ledgers')
-      .select('name, credit_limit, credit_days, phone, email, closing_balance, parent_group');
+      .select('name, credit_limit, credit_days, phone, email, closing_balance, parent_group')
+      .eq('company_id', comp.id);
 
     const ledgerMap: Record<string, any> = {};
     if (ledgers) {
-      (ledgers || []).forEach(l => {
+      ledgers.forEach(l => {
         ledgerMap[l.name] = l;
       });
     }
@@ -136,5 +140,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch Outstandings data' }, { status: 500 });
   }
 }
-
-export const runtime = 'edge';

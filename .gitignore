@@ -2,10 +2,13 @@
 node_modules/
 __pycache__/
 *.pyc
+venv/
+backend/venv/
 
 # Environment files
 .env
 .env.local
+.env.*.local
 
 # Build outputs
 .next/
@@ -13,9 +16,13 @@ dist/
 build/
 out/
 
-# Database / OS files
+# Database / OS / Temp files
 .DS_Store
 Thumbs.db
+*.db
+archive/
+scratch/
 
 # Any raw data we might want to ignore
 *.xml
+

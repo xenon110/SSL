@@ -234,12 +234,28 @@ export async function GET(request: Request) {
         break;
         
       case 'inventory':
-        const bsDataInv = metricsData?.metrics_data || {};
-        const totalInventory = bsDataInv["Closing Stock"] || 0;
+        const { data: stockItemsData } = await supabase.from('stock_items').select('opening_balance_value').eq('company_id', companyId);
+        const { data: invSummaryData } = await supabase.from('mv_inventory_summary').select('total_inward_value, total_outward_value').eq('company_id', companyId);
+        
+        let totalVal = 0;
+        let cogs = 0;
+        
+        // Simplified gross value calculation for the KPI widget
+        let opening = 0;
+        (stockItemsData || []).forEach((row: any) => opening += Math.abs(Number(row.opening_balance_value) || 0));
+        
+        let inward = 0;
+        (invSummaryData || []).forEach((row: any) => {
+            inward += Number(row.total_inward_value) || 0;
+            cogs += Number(row.total_outward_value) || 0;
+        });
+        
+        totalVal = opening + inward - cogs;
+
         data = {
-            "Total Inventory Value": totalInventory,
-            "Inventory Turnover Ratio": pnl["Cost of Sales"] && totalInventory ? (pnl["Cost of Sales"] / totalInventory).toFixed(2) + "x" : "0x",
-            "Notice": "Syncing detailed stock items..."
+            "Total Inventory Value": totalVal,
+            "Inventory Turnover Ratio": cogs > 0 && totalVal > 0 ? (cogs / totalVal).toFixed(2) + "x" : "0x",
+            "Notice": "Stock KPIs Live!"
         };
         break;
         

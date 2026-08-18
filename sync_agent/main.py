@@ -19,6 +19,7 @@ import gzip
 import datetime
 import traceback
 import requests
+from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from tally_client import TallyClient
@@ -89,7 +90,21 @@ def get_open_companies():
                                 headers={'Content-Type': 'text/xml'}, timeout=15)
             if res.status_code == 200:
                 names = re.findall(r'<NAME[^>]*>(.*?)</NAME>', res.text)
-                return list(set([n.replace('&amp;', '&').strip() for n in names if n.strip()]))
+                # Decode common XML entities in company names
+                entity_map = {
+                    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'"
+                }
+                decoded = []
+                for n in names:
+                    n = n.strip()
+                    for entity, char in entity_map.items():
+                        n = n.replace(entity, char)
+                    # Handle numeric entities like &#39; or &#x27;
+                    n = re.sub(r'&#x([0-9a-fA-F]+);', lambda m: chr(int(m.group(1), 16)), n)
+                    n = re.sub(r'&#([0-9]+);', lambda m: chr(int(m.group(1))), n)
+                    if n:
+                        decoded.append(n)
+                return list(set(decoded))
         except Exception as e:
             wait = RETRY_BACKOFF[attempt] if attempt < len(RETRY_BACKOFF) else 60
             log(f"Tally connection attempt {attempt+1} failed: {e}. Retrying in {wait}s...", "WARN")
@@ -150,9 +165,9 @@ def validate_vouchers(vouchers: list) -> tuple:
         if v.get('ledgers'):
             debit_total = sum(abs(l['amount']) for l in v['ledgers'] if l.get('is_debit'))
             credit_total = sum(abs(l['amount']) for l in v['ledgers'] if not l.get('is_debit'))
-            if debit_total > 0 and credit_total > 0:
-                if abs(debit_total - credit_total) > 0.01:
-                    v_errors.append(f"Debit({debit_total:.2f}) != Credit({credit_total:.2f})")
+            # Only validate if there are any ledger entries at all
+            if v['ledgers'] and abs(debit_total - credit_total) > 0.01:
+                v_errors.append(f"Debit({debit_total:.2f}) != Credit({credit_total:.2f})")
 
         if v_errors:
             errors.append({'guid': v.get('tally_guid'), 'errors': v_errors})
@@ -207,16 +222,7 @@ def _process_vouchers_chunk(sb, company_id, vouchers_raw, last_alter_id, max_alt
         for err in validation_errors[:5]:
             log(f"    -> {err}", "WARN")
 
-    try:
-        existing_res = sb.table("vouchers").select("tally_guid").eq("company_id", company_id).execute()
-        existing_guids = {row["tally_guid"] for row in (existing_res.data or [])}
-    except Exception:
-        existing_guids = set()
-
-    new_vouchers = [v for v in vouchers if v.get("tally_guid") not in existing_guids]
-    update_vouchers = [v for v in vouchers if v.get("tally_guid") in existing_guids]
-    stats["duplicates_detected"] += len(vouchers_raw) - len(vouchers)
-    log(f"  New: {len(new_vouchers)}, Updates: {len(update_vouchers)}, Skipped invalid: {len(validation_errors)}")
+    log(f"  Processing {len(vouchers)} validated vouchers...")
 
     v_new_or_modified = [v for v in vouchers if int(v.get("alter_id") or 0) > last_alter_id]
     log(f"  Processing {len(v_new_or_modified)} new/altered vouchers...")
@@ -277,7 +283,7 @@ def _process_vouchers_chunk(sb, company_id, vouchers_raw, last_alter_id, max_alt
                                 "voucher_id": v_db_id,
                                 "stock_item_name": inv["stock_item_name"],
                                 "billed_qty": float(inv["billed_qty"]),
-                                "actual_qty": float(inv.get("billed_qty", 0)),
+                                "actual_qty": float(inv.get("actual_qty", inv.get("billed_qty", 0))),
                                 "rate": float(inv.get("rate", 0)),
                                 "amount": float(inv["amount"]),
                                 "is_inward": inv.get("is_inward", True)
@@ -447,7 +453,7 @@ def sync_company(sb, company_name: str):
         end_date = datetime.date.today()
         
         while current_date <= end_date:
-            chunk_end = current_date + datetime.timedelta(days=30)
+            chunk_end = (current_date + relativedelta(months=1)) - datetime.timedelta(days=1)
             if chunk_end > end_date:
                 chunk_end = end_date
                 
@@ -471,6 +477,7 @@ def sync_company(sb, company_name: str):
                 vouchers_raw = tally.parse_vouchers(vouchers_xml)
                 log(f"  Parsed {len(vouchers_raw)} vouchers in chunk")
                 max_alter_id = _process_vouchers_chunk(sb, company_id, vouchers_raw, last_alter_id, max_alter_id, stats)
+                # Advance to the start of the next calendar month
                 current_date = chunk_end + datetime.timedelta(days=1)
             else:
                 log(f"  CRITICAL: Failed to fetch chunk {from_str} to {to_str} after 3 retries. Halting historical sync.", "ERROR")

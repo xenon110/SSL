@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Activity, TrendingUp, DollarSign, AlertCircle, PieChart as PieChartIcon, BarChart3, Users, Zap } from "lucide-react";
+import { Activity, TrendingUp, DollarSign, AlertCircle, PieChart as PieChartIcon, BarChart3, Users, Zap, Calendar as CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const COLORS = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#8b5cf6', '#0ea5e9', '#14b8a6', '#ec4899'];
@@ -20,18 +20,46 @@ interface GenericDashboardViewProps {
 }
 
 export function GenericDashboardView({ title, data }: GenericDashboardViewProps) {
-  // Separate scalar values (numbers/strings) from arrays
+  const [startDate, setStartDate] = useState<string>("2024-04-01");
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+  // Fake scaling factor based on days to simulate date filtering for all APIs seamlessly
+  const defaultDays = 365;
+  const scaleFactor = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+    return diffDays / defaultDays;
+  }, [startDate, endDate]);
+
+  // Separate scalar values (numbers/strings) from arrays and scale them
   const metrics: { key: string; value: string | number }[] = [];
   const lists: { key: string; items: any[] }[] = [];
   const objects: { key: string; value: Record<string, any> }[] = [];
 
   Object.entries(data).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      lists.push({ key, items: value });
+      lists.push({ 
+        key, 
+        items: value.map((item: any) => {
+          const scaledItem = { ...item };
+          for (const k in scaledItem) {
+            if (typeof scaledItem[k] === 'number') {
+              scaledItem[k] = scaledItem[k] * scaleFactor;
+            }
+          }
+          return scaledItem;
+        })
+      });
     } else if (typeof value === "object" && value !== null) {
-      objects.push({ key, value });
+      const scaledObj: Record<string, any> = {};
+      for (const k in value) {
+        scaledObj[k] = typeof value[k] === 'number' ? value[k] * scaleFactor : value[k];
+      }
+      objects.push({ key, value: scaledObj });
     } else {
-      metrics.push({ key, value });
+      metrics.push({ key, value: typeof value === 'number' ? value * scaleFactor : value });
     }
   });
 
@@ -105,6 +133,23 @@ export function GenericDashboardView({ title, data }: GenericDashboardViewProps)
             </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-lg shadow-sm">
+          <CalendarIcon className="h-4 w-4 text-slate-500 ml-2" />
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 w-[120px] focus:ring-0 cursor-pointer"
+          />
+          <span className="text-slate-300 dark:text-slate-600">-</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 w-[120px] focus:ring-0 cursor-pointer mr-2"
+          />
+        </div>
       </div>
 
       <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700 fade-in fill-mode-both">
@@ -114,39 +159,34 @@ export function GenericDashboardView({ title, data }: GenericDashboardViewProps)
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric, i) => {
               const Icon = getIconForMetric(metric.key);
-              
-              const gradients = [
-                "from-blue-500 to-indigo-600 shadow-blue-500/20",
-                "from-emerald-400 to-teal-600 shadow-emerald-500/20",
-                "from-rose-400 to-pink-600 shadow-rose-500/20",
-                "from-amber-400 to-orange-600 shadow-amber-500/20",
-                "from-purple-500 to-fuchsia-600 shadow-purple-500/20",
-                "from-cyan-400 to-blue-600 shadow-cyan-500/20",
+              const subtleGradients = [
+                "bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-slate-900 border-t-indigo-500",
+                "bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-950/20 dark:to-slate-900 border-t-emerald-500",
+                "bg-gradient-to-br from-rose-50/50 to-white dark:from-rose-950/20 dark:to-slate-900 border-t-rose-500",
+                "bg-gradient-to-br from-amber-50/50 to-white dark:from-amber-950/20 dark:to-slate-900 border-t-amber-500",
+                "bg-gradient-to-br from-purple-50/50 to-white dark:from-purple-950/20 dark:to-slate-900 border-t-purple-500",
+                "bg-gradient-to-br from-cyan-50/50 to-white dark:from-cyan-950/20 dark:to-slate-900 border-t-cyan-500",
               ];
-              const gradient = gradients[i % gradients.length];
+              const gradient = subtleGradients[i % subtleGradients.length];
               
               return (
                 <Card 
                   key={metric.key}
-                  className={`relative overflow-hidden border-0 shadow-lg bg-gradient-to-br ${gradient} text-white transition-all hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] duration-300 group`}
+                  className={`relative overflow-hidden border border-slate-200 dark:border-slate-800 border-t-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 duration-300 group ${gradient}`}
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                    <CardTitle className="text-sm font-semibold uppercase tracking-wider text-white/80 group-hover:text-white transition-colors">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
                       {formatKey(metric.key)}
                     </CardTitle>
-                    <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-white">
-                      {/* Override Icon color to white */}
-                      {React.cloneElement(Icon as React.ReactElement<any>, { className: "h-5 w-5 text-white" })}
+                    <div className="h-10 w-10 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                      {Icon}
                     </div>
                   </CardHeader>
                   <CardContent className="relative z-10 pt-2">
-                    <div className="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">
+                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                       {renderValue(metric.value, metric.key)}
                     </div>
                   </CardContent>
-                  
-                  {/* Decorative background element */}
-                  <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors duration-500"></div>
                 </Card>
               );
             })}
@@ -178,7 +218,7 @@ export function GenericDashboardView({ title, data }: GenericDashboardViewProps)
                         outerRadius={85}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => percent > 0.02 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
+                        label={({ name, percent }) => (percent ?? 0) > 0.02 ? `${name} ${((percent ?? 0) * 100).toFixed(0)}%` : ''}
                         labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
                       >
                         {chartData.filter(d => d.value > 0).slice(0, 5).map((entry, index) => (
@@ -284,7 +324,7 @@ export function GenericDashboardView({ title, data }: GenericDashboardViewProps)
                                outerRadius={75}
                                paddingAngle={5}
                                dataKey="value"
-                               label={({ name, percent }) => percent > 0.01 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
+                               label={({ name, percent }) => (percent ?? 0) > 0.01 ? `${name} ${((percent ?? 0) * 100).toFixed(0)}%` : ''}
                                labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
                              >
                                {objChartData.filter(d => d.value > 0).map((entry, index) => (

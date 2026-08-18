@@ -117,9 +117,9 @@ export async function GET(request: Request) {
     const grossProfit = totalDirectIncome - totalDirectExpense;
     const netProfit = grossProfit + totalIndirectIncome - totalIndirectExpense;
 
-    const gpMargin = totalDirectIncome > 0 ? (grossProfit / totalDirectIncome) * 100 : 0;
-    const npMargin = totalDirectIncome > 0 ? (netProfit / totalDirectIncome) * 100 : 0;
-    const operatingMargin = totalDirectIncome > 0 ? ((grossProfit - totalIndirectExpense) / totalDirectIncome) * 100 : 0;
+    const gpMargin = totalIncome > 0 ? (grossProfit / totalIncome) * 100 : 0;
+    const npMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
+    const operatingMargin = totalIncome > 0 ? ((grossProfit - totalIndirectExpense) / totalIncome) * 100 : 0;
 
     const topProducts = (productSales || [])
         .map((p: any) => ({ name: p.product_name, value: Number(p.sales_amount) || 0 }))

@@ -382,27 +382,25 @@ class TallyClient:
             root = ET.fromstring(cleaned_xml)
             
             # Tally exports each bill's core info in <BILLFIXED> and the dynamic amounts as siblings.
-            # E.g.
-            # <BILLFIXED><BILLDATE>...</BILLDATE><BILLREF>...</BILLREF><BILLPARTY>...</BILLPARTY></BILLFIXED>
-            # <BILLCL>...</BILLCL><BILLDUE>...</BILLDUE>
-            
-            children = list(root)
-            for i, node in enumerate(children):
+            # The structure can be nested inside <BODY><DATA><REPORTDATA> or similar — so we use
+            # root.iter() to find BILLFIXED nodes at any depth instead of only iterating direct children.
+            all_nodes = list(root.iter())
+            for i, node in enumerate(all_nodes):
                 if node.tag == 'BILLFIXED':
                     bill_date = node.findtext("BILLDATE")
                     bill_ref = node.findtext("BILLREF")
                     party = node.findtext("BILLPARTY")
                     
-                    # Next sibling nodes usually contain BILLCL, BILLDUE, etc.
+                    # Next sibling nodes in the flat iter list usually contain BILLCL, BILLDUE, etc.
                     pending_amount_str = "0"
                     due_date = bill_date
-                    for j in range(i+1, min(i+10, len(children))):
-                        if children[j].tag == 'BILLFIXED':
-                            break # Reached next bill
-                        if children[j].tag == 'BILLCL':
-                            pending_amount_str = children[j].text or "0"
-                        if children[j].tag == 'BILLDUE':
-                            due_date = children[j].text or due_date
+                    for j in range(i+1, min(i+10, len(all_nodes))):
+                        if all_nodes[j].tag == 'BILLFIXED':
+                            break  # Reached next bill
+                        if all_nodes[j].tag == 'BILLCL':
+                            pending_amount_str = all_nodes[j].text or "0"
+                        if all_nodes[j].tag == 'BILLDUE':
+                            due_date = all_nodes[j].text or due_date
                     
                     pending_amount = float(re.sub(r'[^0-9.\-]', '', pending_amount_str.split()[0] if pending_amount_str.strip() else "0") or "0")
                     if report_type == "Receivables":

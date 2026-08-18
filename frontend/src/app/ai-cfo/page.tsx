@@ -73,7 +73,7 @@ export default function AiCfoPage() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
+                <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />
                 <Legend />
               </PieChart>
             ) : (
@@ -81,7 +81,7 @@ export default function AiCfoPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={(val) => `₹${val > 1000 ? (val/1000).toFixed(1) + 'k' : val}`} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} cursor={{fill: '#f8fafc'}} />
+                <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} cursor={{fill: '#f8fafc'}} />
                 <Bar dataKey="value" fill="#4f46e5" radius={[4, 4, 0, 0]}>
                   {chart.data.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
