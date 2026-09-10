@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { AlertTriangle, RefreshCw, TrendingUp, TrendingDown, DollarSign, Building2, Landmark, Database, Receipt, ArrowRight, Target, LayoutDashboard, Calendar as CalendarIcon } from "lucide-react";
+import { AlertTriangle, RefreshCw, TrendingUp, TrendingDown, DollarSign, Building2, Landmark, Database, Receipt, ArrowRight, Target, LayoutDashboard, Calendar as CalendarIcon, Users, PieChart as PieChartIcon, Briefcase, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function ExecutivePage() {
@@ -274,7 +274,7 @@ export default function ExecutivePage() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `${(v/10000000).toFixed(0)}Cr`} />
                 <Tooltip 
-                  formatter={(val: number) => [formatShortCurrency(val), "Revenue"]}
+                  formatter={(val: any) => [formatShortCurrency(val || 0), "Revenue"]}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
                 <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
@@ -342,7 +342,7 @@ export default function ExecutivePage() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatShortCurrency(v)} />
+                <Tooltip formatter={(v: any) => formatShortCurrency(v || 0)} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -393,7 +393,7 @@ export default function ExecutivePage() {
           return (
             <div key={i} className={`${bgMap[kpi.color]} border rounded-3xl p-5 shadow-sm hover:shadow-md transition-all`}>
               <div className={`${iconBgMap[kpi.color]} ${textMap[kpi.color]} w-8 h-8 rounded-full flex items-center justify-center mb-4`}>
-                {React.cloneElement(kpi.icon as React.ReactElement, { className: "h-4 w-4" })}
+                {React.cloneElement(kpi.icon as any, { className: "h-4 w-4" })}
               </div>
               <p className="text-xs font-semibold text-slate-600 mb-1">{kpi.title}</p>
               <h3 className="text-lg font-bold text-slate-900 mb-3">{kpi.value}</h3>
