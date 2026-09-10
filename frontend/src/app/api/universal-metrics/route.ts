@@ -32,10 +32,11 @@ export async function GET(request: Request) {
     const pnl = metricsData?.metrics_data || {};
 
     // Fetch Outstandings (from mv_party_outstandings instead of legacy view)
+    const companySearchTerm = decodedName.split(' - ')[0].trim();
     const { data: outstandings } = await supabase
       .from('mv_party_outstandings')
       .select('*')
-      .eq('company_name', decodedName);
+      .ilike('company_name', `%${companySearchTerm}%`);
       
     let totalAR = 0;
     let totalAP = 0;

@@ -34,10 +34,11 @@ export async function GET(request: Request) {
     }
 
     // 1. Fetch from Materialized View (Pre-calculated in PostgreSQL)
+    const companySearchTerm = companyName.split(' - ')[0].trim();
     let query = supabase
       .from('mv_party_outstandings')
       .select('*')
-      .eq('company_name', companyName);
+      .ilike('company_name', `%${companySearchTerm}%`);
       
     if (groupFilter) {
       query = query.eq('party_group', groupFilter);
