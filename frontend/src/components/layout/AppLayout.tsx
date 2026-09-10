@@ -19,7 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="p-4 sm:ml-64">
+      <div className="p-4 sm:ml-20">
         <Topbar />
         <main className="p-4 rounded-lg mt-4">
           {children}
