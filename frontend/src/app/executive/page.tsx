@@ -15,6 +15,10 @@ export default function ExecutivePage() {
     setError(null);
     try {
       const res = await fetch('/api/executive');
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error("Please select an active company or wait for the sync script to complete.");
+      }
       const json = await res.json();
       
       if (!res.ok) {
