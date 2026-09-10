@@ -23,43 +23,19 @@ export function GenericDashboardView({ title, data }: GenericDashboardViewProps)
   const [startDate, setStartDate] = useState<string>("2024-04-01");
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-  // Fake scaling factor based on days to simulate date filtering for all APIs seamlessly
-  const defaultDays = 365;
-  const scaleFactor = useMemo(() => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
-    return diffDays / defaultDays;
-  }, [startDate, endDate]);
-
-  // Separate scalar values (numbers/strings) from arrays and scale them
+  // Separate scalar values (numbers/strings) from arrays and objects
+  // Show EXACT values from Tally — no scaling or calculations
   const metrics: { key: string; value: string | number }[] = [];
   const lists: { key: string; items: any[] }[] = [];
   const objects: { key: string; value: Record<string, any> }[] = [];
 
   Object.entries(data).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      lists.push({ 
-        key, 
-        items: value.map((item: any) => {
-          const scaledItem = { ...item };
-          for (const k in scaledItem) {
-            if (typeof scaledItem[k] === 'number') {
-              scaledItem[k] = scaledItem[k] * scaleFactor;
-            }
-          }
-          return scaledItem;
-        })
-      });
+      lists.push({ key, items: value });
     } else if (typeof value === "object" && value !== null) {
-      const scaledObj: Record<string, any> = {};
-      for (const k in value) {
-        scaledObj[k] = typeof value[k] === 'number' ? value[k] * scaleFactor : value[k];
-      }
-      objects.push({ key, value: scaledObj });
+      objects.push({ key, value });
     } else {
-      metrics.push({ key, value: typeof value === 'number' ? value * scaleFactor : value });
+      metrics.push({ key, value });
     }
   });
 
