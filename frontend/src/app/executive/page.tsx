@@ -163,16 +163,7 @@ export default function ExecutivePage() {
             </div>
             <span className="text-sm font-semibold text-slate-600">Total Assets</span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-900 mb-4">{formatCurrency(totalAssets)}</h2>
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> +12.5%
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">vs last period</span>
-            </div>
-            <MiniSparkline color="#3b82f6" data={[10, 15, 12, 18, 14, 25, 20]} />
-          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">{formatCurrency(totalAssets)}</h2>
         </div>
 
         {/* Cash in Bank */}
@@ -183,16 +174,7 @@ export default function ExecutivePage() {
             </div>
             <span className="text-sm font-semibold text-slate-600">Cash in Bank</span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-900 mb-4">{formatCurrency(cashInBank)}</h2>
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> +8.2%
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">vs last period</span>
-            </div>
-            <MiniSparkline color="#10b981" data={[20, 18, 24, 22, 28, 25, 30]} />
-          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">{formatCurrency(cashInBank)}</h2>
         </div>
 
         {/* Net Profit */}
@@ -203,16 +185,7 @@ export default function ExecutivePage() {
             </div>
             <span className="text-sm font-semibold text-slate-600">Net Profit</span>
           </div>
-          <h2 className="text-3xl font-bold text-rose-600 mb-4">{formatCurrency(netProfit)}</h2>
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-rose-500 flex items-center gap-1">
-                <TrendingDown className="h-3 w-3" /> -18.7%
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">vs last period</span>
-            </div>
-            <MiniSparkline color="#f43f5e" data={[30, 25, 20, 15, 10, 12, 5]} />
-          </div>
+          <h2 className="text-3xl font-bold text-rose-600 mb-2">{formatCurrency(netProfit)}</h2>
         </div>
 
         {/* Net Worth */}
@@ -223,16 +196,7 @@ export default function ExecutivePage() {
             </div>
             <span className="text-sm font-semibold text-slate-600">Net Worth</span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-900 mb-4">{formatCurrency(netWorth)}</h2>
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> +11.3%
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">vs last period</span>
-            </div>
-            <MiniSparkline color="#0ea5e9" data={[50, 52, 55, 60, 58, 65, 70]} />
-          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">{formatCurrency(netWorth)}</h2>
         </div>
       </div>
 
@@ -251,9 +215,6 @@ export default function ExecutivePage() {
                 <p className="text-xs text-slate-500 font-medium">Overall income generated</p>
                 <div className="flex items-center gap-3 mt-3">
                   <span className="text-3xl font-extrabold text-slate-900">{formatCurrency(totalRevenue)}</span>
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> +14.6% <span className="text-slate-400 font-medium ml-1">vs last period</span>
-                  </span>
                 </div>
               </div>
             </div>
@@ -396,22 +357,7 @@ export default function ExecutivePage() {
                 {React.cloneElement(kpi.icon as any, { className: "h-4 w-4" })}
               </div>
               <p className="text-xs font-semibold text-slate-600 mb-1">{kpi.title}</p>
-              <h3 className="text-lg font-bold text-slate-900 mb-3">{kpi.value}</h3>
-              <div className="flex justify-between items-end mt-auto">
-                <div className="flex flex-col">
-                  <span className={`text-[10px] font-bold flex items-center gap-0.5 ${kpi.trend.includes('-') ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {kpi.trend.includes('-') ? <TrendingDown className="h-3 w-3"/> : <TrendingUp className="h-3 w-3"/>} {kpi.trend}
-                  </span>
-                  <span className="text-[9px] text-slate-400 font-medium">vs last period</span>
-                </div>
-                <div className="w-10 h-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={[1,4,2,5,3,6].map((v,i)=>({v,i}))}>
-                      <Line type="monotone" dataKey="v" stroke={kpi.trend.includes('-') ? '#f43f5e' : '#10b981'} strokeWidth={1.5} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">{kpi.value}</h3>
             </div>
           )
         })}
