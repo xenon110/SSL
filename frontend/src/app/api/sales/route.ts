@@ -7,4 +7,4 @@ export async function GET(request: Request) {
   return NextResponse.json({ message: "Deprecated. Use /api/dashboard directly." });
 }
 
-export const runtime = 'edge';
+// export const runtime = 'edge';
