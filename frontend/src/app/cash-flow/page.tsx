@@ -284,25 +284,6 @@ export default function CashFlowDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={triggerSync}
-            disabled={isSyncing}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin text-emerald-500" : ""}`} />
-            {isSyncing ? "Syncing Live..." : "Live Sync"}
-          </button>
-          
-          <a
-            href={predictionUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-lg shadow-md hover:scale-102 active:scale-98 transition-all duration-200"
-          >
-            <Sparkles className="h-4 w-4 text-white animate-pulse" />
-            AI Future Prediction
-          </a>
-          
           <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
              <DateRangePicker value={dateRange} onDateChange={setDateRange} />
           </div>
@@ -535,7 +516,6 @@ export default function CashFlowDashboard() {
                         name="Inflow Amount" 
                         radius={[0, 4, 4, 0]} 
                         barSize={20}
-                        onClick={(data) => setSelectedLedger(data)}
                       >
                         {(data.topSources || []).map((_: any, i: number) => (
                           <Cell key={i} fill="#10b981" className="cursor-pointer hover:opacity-80 transition-opacity" />
@@ -568,7 +548,6 @@ export default function CashFlowDashboard() {
                         name="Outflow Amount" 
                         radius={[0, 4, 4, 0]} 
                         barSize={20}
-                        onClick={(data) => setSelectedLedger(data)}
                       >
                         {(data.topUses || []).map((_: any, i: number) => (
                           <Cell key={i} fill="#f43f5e" className="cursor-pointer hover:opacity-80 transition-opacity" />
@@ -701,8 +680,6 @@ export default function CashFlowDashboard() {
                         outerRadius={160}
                         paddingAngle={2}
                         dataKey="value"
-                        onClick={(data) => setSelectedLedger(data.payload)}
-                        className="cursor-pointer"
                       >
                         {Array.from({length: 15}).map((_, index) => (
                           <Cell key={`cell-${index}`} fill={modalType === 'inflow' ? donutColors[index % donutColors.length] : donutColors.reverse()[index % donutColors.length]} className="hover:opacity-80 transition-opacity" />
@@ -716,200 +693,6 @@ export default function CashFlowDashboard() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* =================================================================================================== */}
-      {/* 2. LEDGER DEEP DIVE MODAL */}
-      {/* =================================================================================================== */}
-      {selectedLedger && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 animate-in zoom-in-95 duration-300">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between px-8 py-6 border-b bg-gradient-to-r from-emerald-50 to-white dark:from-slate-800 dark:to-slate-900">
-              <div>
-                <Badge variant="outline" className="mb-2 bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300">Ledger Deep Dive</Badge>
-                <h3 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white" title={selectedLedger.name}>
-                  {selectedLedger.name.length > 50 ? selectedLedger.name.substring(0, 50) + '...' : selectedLedger.name}
-                </h3>
-              </div>
-              <button 
-                onClick={() => setSelectedLedger(null)}
-                className="p-3 rounded-full bg-white shadow-sm border hover:bg-slate-100 transition-colors text-slate-500"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-              <div className="flex-1 overflow-auto p-8 space-y-8 bg-slate-50/30 dark:bg-slate-900/50 custom-scrollbar">
-                
-                {/* Product isolated KPIs */}
-              <div className="grid grid-cols-3 gap-6">
-                <Card className="border-0 shadow-md bg-white">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs uppercase text-slate-400 font-bold">Total Received From</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-black text-emerald-600">{formatCurrency(selectedLedger.inflow || selectedLedger.amount || 0)}</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-md bg-white">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs uppercase text-slate-400 font-bold">Total Paid To</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-black text-rose-600">{formatCurrency(selectedLedger.outflow || 0)}</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-md bg-white relative overflow-hidden">
-                  <div className="absolute right-0 bottom-0 opacity-10"><Banknote className="h-24 w-24 text-indigo-600" /></div>
-                  <CardHeader className="pb-2 relative z-10">
-                    <CardTitle className="text-xs uppercase text-slate-400 font-bold">Net Cash Flow</CardTitle>
-                  </CardHeader>
-                  <CardContent className="relative z-10">
-                    <p className={`text-4xl font-black ${(selectedLedger.netFlow || selectedLedger.amount || 0) >= 0 ? 'text-indigo-700' : 'text-rose-700'}`}>
-                      {formatCurrency(selectedLedger.netFlow || selectedLedger.amount || 0)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Comparative Velocity Chart */}
-              <Card className="border-0 shadow-xl bg-white flex flex-col overflow-hidden">
-                <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50/80">
-                  <div>
-                    <h4 className="text-lg font-bold flex items-center gap-2"><Activity className="h-5 w-5 text-indigo-500" /> Historical Cash Flow</h4>
-                    <p className="text-xs text-slate-500">Track and compare the monthly cash flow with this ledger.</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-slate-400 uppercase">Compare With:</span>
-                    <select 
-                      className="text-sm border-2 rounded-lg px-4 py-2 bg-white shadow-sm focus:outline-none focus:border-indigo-500 font-medium max-w-xs truncate"
-                      value={compareLedger}
-                      onChange={(e) => setCompareLedger(e.target.value)}
-                    >
-                      <option value="none">-- Select a ledger to compare --</option>
-                      {allLedgersCombined
-                        .filter((p: any) => p.name !== selectedLedger.name)
-                        .map((p: any) => (
-                          <option key={p.name} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="h-[400px] p-6 pt-8">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={deepDiveTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} axisLine={false} dy={10} />
-                      <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} dx={-10} tickFormatter={(v) => formatCompact(v)} />
-                      <RechartsTooltip formatter={(value: any) => formatCurrency(value)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                      
-                      <Line type="monotone" dataKey="targetIn" name={`${selectedLedger.name.substring(0, 15)} (Received)`} stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="targetOut" name={`${selectedLedger.name.substring(0, 15)} (Paid)`} stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#f43f5e', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                      
-                      {compareLedger !== 'none' && (
-                        <>
-                          <Line type="monotone" dataKey="compareIn" name={`${compareLedger.substring(0, 15)} (Received)`} stroke="#0ea5e9" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="compareOut" name={`${compareLedger.substring(0, 15)} (Paid)`} stroke="#eab308" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                        </>
-                      )}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </Card>
-
-                {/* Transaction Ledger Table */}
-                <div className="mt-8">
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2 uppercase tracking-wide">
-                    <ChevronRight className="h-4 w-4 text-indigo-500" />
-                    Transaction Ledger
-                  </h3>
-                  <div className="rounded-xl border shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
-                    <div className="max-h-[400px] overflow-auto custom-scrollbar">
-                      <Table>
-                        <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 shadow-sm">
-                          <TableRow>
-                            <TableHead className="text-xs font-semibold cursor-pointer hover:text-indigo-600 select-none whitespace-nowrap pl-6" onClick={() => handleSort('date')}>
-                              Date {sortConfig.key === 'date' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
-                            </TableHead>
-                            <TableHead className="text-xs font-semibold">Voucher</TableHead>
-                            <TableHead className="text-xs font-semibold">Type</TableHead>
-                            <TableHead className="text-xs font-semibold text-right cursor-pointer hover:text-indigo-600 select-none whitespace-nowrap pr-6" onClick={() => handleSort('amount')}>
-                              Amount {sortConfig.key === 'amount' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredTransactions.length > 0 ? filteredTransactions.map((tx: any, i: number) => (
-                            <React.Fragment key={i}>
-                              <TableRow 
-                                className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer"
-                                onClick={() => setExpandedTxId(expandedTxId === tx.id ? null : tx.id)}
-                              >
-                                <TableCell className="text-xs whitespace-nowrap text-slate-500 pl-6">
-                                  <div className="flex items-center gap-1.5">
-                                    {expandedTxId === tx.id ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-xs font-mono text-slate-400">{tx.id}</TableCell>
-                                <TableCell className="text-xs font-medium">
-                                  <Badge variant="outline" className={tx.type === 'INFLOW' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}>
-                                    {tx.voucherType}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className={`text-xs text-right font-bold tabular-nums pr-6 ${tx.type === 'INFLOW' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                                  {tx.type === 'INFLOW' ? '+' : '-'}{formatCurrency(tx.amount)}
-                                </TableCell>
-                              </TableRow>
-                              {expandedTxId === tx.id && (
-                                <TableRow className="bg-slate-50/50 dark:bg-slate-800/30">
-                                  <TableCell colSpan={4} className="p-0">
-                                    <div className="p-4 border-b pl-6 pr-6">
-                                      <h4 className="text-xs font-semibold mb-2 flex items-center gap-1"><Receipt className="w-3.5 h-3.5 text-indigo-500" /> Detailed Voucher Breakdown</h4>
-                                      <table className="w-full text-xs">
-                                        <thead><tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500"><th className="text-left py-1.5 font-medium">Item / Ledger</th><th className="text-right py-1.5 font-medium">Qty</th><th className="text-right py-1.5 font-medium">Rate</th><th className="text-right py-1.5 font-medium">Amount</th></tr></thead>
-                                        <tbody>
-                                          {(tx.items || []).map((item: any, idx: number) => (
-                                            <tr key={`item-${idx}`} className="border-b border-slate-100 dark:border-slate-800">
-                                              <td className="py-1.5">{item.product}</td>
-                                              <td className="text-right py-1.5 text-slate-600">{item.qty > 0 ? item.qty : '—'}</td>
-                                              <td className="text-right py-1.5 text-slate-600">{item.rate > 0 ? formatCurrency(item.rate) : '—'}</td>
-                                              <td className="text-right py-1.5 font-medium">{formatCurrency(item.amount)}</td>
-                                            </tr>
-                                          ))}
-                                          {(tx.ledgers || []).map((l: any, idx: number) => (
-                                            <tr key={`l-${idx}`}>
-                                              <td className={`text-left py-1.5 italic ${l.is_debit ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                {l.name} <span className="text-[9px] uppercase font-bold opacity-50 ml-1">{l.is_debit ? 'Dr' : 'Cr'}</span>
-                                              </td>
-                                              <td colSpan={2}></td>
-                                              <td className="text-right py-1.5 text-slate-500">{formatCurrency(l.amount)}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </React.Fragment>
-                          )) : (
-                            <TableRow>
-                              <TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm">No transactions match your search.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                </div>
-  
-              </div>
-            </div>
-          </div>
       )}
 
     </div>
