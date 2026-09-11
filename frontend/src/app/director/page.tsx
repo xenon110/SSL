@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { AlertTriangle, RefreshCw, BrainCircuit, TrendingUp, TrendingDown, Database, DollarSign, Calendar as CalendarIcon, Briefcase, Target, Shield, Lightbulb } from "lucide-react";
+import { AlertTriangle, RefreshCw, Briefcase, TrendingUp, Shield, Database, Calendar as CalendarIcon, Download, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DirectorPage() {
@@ -35,14 +35,14 @@ export default function DirectorPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6 animate-pulse bg-[#fafbfc] min-h-screen">
-        <div className="h-10 w-64 bg-slate-200 dark:bg-slate-800 rounded-lg mb-8"></div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1,2,3,4].map(i => <div key={i} className="h-40 bg-slate-200 dark:bg-slate-800 rounded-3xl"></div>)}
+      <div className="p-8 space-y-4 animate-pulse bg-slate-50 min-h-screen">
+        <div className="h-8 w-48 bg-slate-200 rounded mb-6"></div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-200 rounded-lg border border-slate-200"></div>)}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[450px] mt-6">
-          <div className="bg-slate-200 dark:bg-slate-800 rounded-3xl"></div>
-          <div className="bg-slate-200 dark:bg-slate-800 rounded-3xl"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px] mt-4">
+          <div className="bg-slate-200 rounded-lg border border-slate-200"></div>
+          <div className="bg-slate-200 rounded-lg border border-slate-200"></div>
         </div>
       </div>
     );
@@ -50,13 +50,13 @@ export default function DirectorPage() {
 
   if (error || !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-center p-6 bg-[#fafbfc]">
-        <div className="bg-red-50 p-6 rounded-3xl max-w-md border border-red-100 shadow-sm">
-          <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-900 mb-2">No Live Data Yet</h3>
-          <p className="text-slate-600 mb-6 text-sm">{error}</p>
-          <Button onClick={fetchMetrics} className="bg-indigo-600 hover:bg-indigo-700 rounded-xl">
-            <RefreshCw className="w-4 h-4 mr-2" /> Check Again
+      <div className="flex flex-col items-center justify-center h-[70vh] text-center p-6 bg-slate-50">
+        <div className="bg-white p-6 rounded-lg max-w-md border border-slate-200 shadow-sm">
+          <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-4" />
+          <h3 className="text-base font-semibold text-slate-900 mb-2">No Live Data Yet</h3>
+          <p className="text-slate-500 mb-6 text-sm">{error}</p>
+          <Button onClick={fetchMetrics} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 py-2 text-sm">
+            <RefreshCw className="w-4 h-4 mr-2" /> Refresh Data
           </Button>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default function DirectorPage() {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      maximumFractionDigits: 2
+      maximumFractionDigits: 0
     }).format(val);
   };
 
@@ -92,169 +92,148 @@ export default function DirectorPage() {
 
   const profOverview = data["Profitability Overview"] || {};
 
-  // Chart Data
+  // Chart Data (Professional Color Palette)
   const capPieData = [
-    { name: "Total Equity", value: Math.abs(totalEquity), realValue: totalEquity, color: "#6366f1" },
-    { name: "Total Debt", value: Math.abs(totalDebt), realValue: totalDebt, color: "#f43f5e" }
+    { name: "Total Equity", value: Math.abs(totalEquity), realValue: totalEquity, color: "#115e59" }, // Dark Teal
+    { name: "Total Debt", value: Math.abs(totalDebt), realValue: totalDebt, color: "#0ea5e9" } // Professional Blue
   ].filter(d => d.value > 0);
 
   const profBarData = [
-    { name: "Gross Profit", value: profOverview["Gross Profit"] || 0, color: "#10b981" },
-    { name: "EBITDA", value: profOverview["EBITDA"] || 0, color: "#f59e0b" },
-    { name: "Net Profit", value: profOverview["Net Profit"] || 0, color: "#3b82f6" },
+    { name: "Gross Profit", value: profOverview["Gross Profit"] || 0, color: "#0f766e" },
+    { name: "EBITDA", value: profOverview["EBITDA"] || 0, color: "#eab308" },
+    { name: "Net Profit", value: profOverview["Net Profit"] || 0, color: "#0369a1" },
   ];
 
   return (
-    <div className="p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto bg-[#fafbfc] min-h-screen">
+    <div className="p-4 md:p-6 space-y-4 max-w-[1600px] mx-auto bg-slate-50 min-h-screen font-sans">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
+      {/* Top Action Bar */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
-            <div className="bg-indigo-600 text-white p-2 rounded-xl shadow-lg shadow-indigo-600/20">
-              <BrainCircuit className="h-7 w-7" />
-            </div>
-            Director Decision Panel
-          </h1>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"></span>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Live Executive Intelligence</p>
-          </div>
+          <h1 className="text-xl font-semibold text-slate-800 tracking-tight">Director Decision Panel</h1>
+          <p className="text-xs font-medium text-slate-500 mt-0.5">Corporate Financial Overview • YTD</p>
         </div>
-        <div className="flex items-center gap-3 bg-white border border-slate-200 px-5 py-2.5 rounded-2xl shadow-sm">
-          <CalendarIcon className="h-4 w-4 text-indigo-500" />
-          <span className="text-sm font-bold text-slate-700">FY 2024 - 2025</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-md text-xs text-slate-600 font-medium">
+            <CalendarIcon className="h-3.5 w-3.5" />
+            FY 2024 - 2025
+          </div>
+          <button className="p-1.5 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+            <Download className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      {/* Top 4 KPI Cards - Premium Dark/Glass Style */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* EBITDA */}
-        <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-amber-50 rounded-full blur-3xl group-hover:bg-amber-100 transition-colors"></div>
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Operating Perf.</p>
-              <h3 className="text-sm font-extrabold text-slate-800">EBITDA</h3>
-            </div>
-            <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
-              <Briefcase className="h-5 w-5" />
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">EBITDA</h3>
+            <Briefcase className="h-4 w-4 text-slate-400" />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-1 relative z-10">{formatCurrency(ebitda)}</h2>
+          <div className="pl-2">
+            <h2 className={`text-2xl font-bold tracking-tight ${ebitda < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+              {formatShortCurrency(ebitda)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Operating Profitability</p>
+          </div>
         </div>
 
         {/* Net Profit */}
-        <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 rounded-full blur-3xl group-hover:bg-emerald-100 transition-colors"></div>
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Bottom Line</p>
-              <h3 className="text-sm font-extrabold text-slate-800">Net Profit</h3>
-            </div>
-            <div className="bg-emerald-100 text-emerald-600 p-3 rounded-2xl">
-              <TrendingUp className="h-5 w-5" />
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-sky-600 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Profit</h3>
+            <TrendingUp className="h-4 w-4 text-slate-400" />
           </div>
-          <h2 className={`text-3xl font-black mb-1 relative z-10 ${netProfit < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-            {formatCurrency(netProfit)}
-          </h2>
+          <div className="pl-2">
+            <h2 className={`text-2xl font-bold tracking-tight ${netProfit < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+              {formatShortCurrency(netProfit)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Total Bottom Line</p>
+          </div>
         </div>
 
         {/* Debt Equity */}
-        <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-rose-50 rounded-full blur-3xl group-hover:bg-rose-100 transition-colors"></div>
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Risk Metric</p>
-              <h3 className="text-sm font-extrabold text-slate-800">Debt-Equity Ratio</h3>
-            </div>
-            <div className="bg-rose-100 text-rose-600 p-3 rounded-2xl">
-              <Shield className="h-5 w-5" />
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Debt-Equity Ratio</h3>
+            <Shield className="h-4 w-4 text-slate-400" />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-1 relative z-10">{debtEquity}</h2>
+          <div className="pl-2">
+            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{debtEquity}</h2>
+            <p className="text-xs text-slate-400 mt-1">Financial Leverage</p>
+          </div>
         </div>
 
         {/* Net Worth */}
-        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-800 rounded-[2rem] p-6 shadow-xl shadow-indigo-900/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-colors"></div>
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <p className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-1">Company Value</p>
-              <h3 className="text-sm font-extrabold text-white">Net Worth</h3>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md text-white p-3 rounded-2xl border border-white/10">
-              <Database className="h-5 w-5" />
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-teal-700 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Worth</h3>
+            <Database className="h-4 w-4 text-slate-400" />
           </div>
-          <h2 className="text-3xl font-black text-white mb-1 relative z-10">{formatCurrency(netWorth)}</h2>
+          <div className="pl-2">
+            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{formatShortCurrency(netWorth)}</h2>
+            <p className="text-xs text-slate-400 mt-1">Total Company Equity</p>
+          </div>
         </div>
 
       </div>
 
-      {/* Deep Dive Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
+      {/* Main Charts Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* Capital Structure */}
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden">
-          <div className="flex justify-between items-center mb-8 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="bg-indigo-50 text-indigo-600 p-3 rounded-2xl">
-                <Target className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900">Capital Structure</h3>
-                <p className="text-sm font-medium text-slate-500">Debt vs Equity Distribution</p>
-              </div>
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col">
+          <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-700">Capital Structure Analysis</h3>
+            <MoreHorizontal className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-600" />
           </div>
-          
-          <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-            <div className="h-[280px] w-full md:w-1/2 relative">
+          <div className="p-4 flex-1 flex flex-col md:flex-row items-center gap-6">
+            <div className="h-[220px] w-full md:w-1/2 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={capPieData}
                     cx="50%" cy="50%"
-                    innerRadius={70} outerRadius={110}
-                    paddingAngle={3}
+                    innerRadius={65} outerRadius={85}
                     dataKey="value"
-                    stroke="none"
-                    cornerRadius={8}
+                    stroke="#fff"
+                    strokeWidth={2}
                   >
                     {capPieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip 
-                    formatter={(val: any, name: any, props: any) => [formatShortCurrency(props.payload.realValue), name]}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 'bold' }}
+                    formatter={(val: any, name: any, props: any) => [formatCurrency(props.payload.realValue), name]}
+                    contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
-              {/* Center Text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Cap</span>
-                <span className="text-xl font-black text-slate-900">{formatShortCurrency(totalEquity + totalDebt)}</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total Capital</span>
+                <span className="text-sm font-bold text-slate-800">{formatShortCurrency(totalEquity + totalDebt)}</span>
               </div>
             </div>
             
-            <div className="w-full md:w-1/2 space-y-6">
+            <div className="w-full md:w-1/2 flex flex-col justify-center gap-3">
               {capPieData.map((item, i) => {
                 const pct = (totalEquity + totalDebt) > 0 ? ((item.value / (Math.abs(totalEquity) + Math.abs(totalDebt))) * 100).toFixed(1) : "0";
                 return (
-                  <div key={i} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: item.color }}></div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{item.name}</p>
-                        <p className="text-lg font-black" style={{ color: item.color }}>{pct}%</p>
-                      </div>
+                  <div key={i} className="flex items-center justify-between border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></div>
+                      <span className="text-xs font-medium text-slate-600">{item.name}</span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-extrabold text-slate-900">{formatShortCurrency(item.realValue)}</p>
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs font-semibold text-slate-800">{formatShortCurrency(item.realValue)}</span>
+                      <span className="text-[10px] text-slate-400 font-medium">{pct}%</span>
                     </div>
                   </div>
                 )
@@ -264,33 +243,25 @@ export default function DirectorPage() {
         </div>
 
         {/* Profitability Overview */}
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden">
-          <div className="flex justify-between items-center mb-8 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="bg-emerald-50 text-emerald-600 p-3 rounded-2xl">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900">Profitability Funnel</h3>
-                <p className="text-sm font-medium text-slate-500">Gross to Net Analysis</p>
-              </div>
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col">
+          <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-700">Profitability Waterfall</h3>
+            <MoreHorizontal className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-600" />
           </div>
-
-          <div className="h-[280px] w-full relative z-10">
+          <div className="p-4 flex-1 h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profBarData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 'bold' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 'bold' }} tickFormatter={(v) => formatShortCurrency(v)} />
+              <BarChart data={profBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={true} stroke="#cbd5e1" tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => formatShortCurrency(v)} />
                 <Tooltip 
                   formatter={(val: any) => [formatCurrency(val), "Amount"]}
                   cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 'bold' }}
+                  contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
                 />
-                <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={50}>
+                <Bar dataKey="value" barSize={32}>
                   {profBarData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.value < 0 ? '#f43f5e' : entry.color} />
+                    <Cell key={`cell-${index}`} fill={entry.value < 0 ? '#e11d48' : entry.color} />
                   ))}
                 </Bar>
               </BarChart>
