@@ -286,7 +286,43 @@ export async function GET(request: Request) {
         if (type === 'customer-analytics') {
             data = { "Total Outstanding": totalAR, "Top 5 Debtors (Live)": finalChart };
         } else {
-            data = { "Total Owed": totalAP, "Top 5 Creditors (Live)": finalChart };
+            const { data: supplierPurchases } = await supabase.from('mv_supplier_purchases').select('*').eq('company_id', companyId);
+            
+            let totalVendors = 0;
+            let totalSpend = 0;
+            let defectiveChart: any = {};
+            let spendChart: any = {};
+            
+            (supplierPurchases || []).forEach((row: any) => {
+                const purch = Number(row.total_purchases) || 0;
+                const ret = Number(row.total_returns) || 0;
+                
+                if (purch > 0) {
+                    totalVendors++;
+                    totalSpend += purch;
+                    spendChart[row.supplier_name] = purch;
+                }
+                if (ret > 0) {
+                    defectiveChart[row.supplier_name] = ret;
+                }
+            });
+            
+            const sortedDefective = Object.entries(defectiveChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+            let finalDefective: any = {};
+            sortedDefective.forEach(([k, v]) => finalDefective[k] = v);
+            
+            const sortedSpend = Object.entries(spendChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+            let finalSpend: any = {};
+            sortedSpend.forEach(([k, v]) => finalSpend[k] = v);
+
+            data = { 
+                "Total Owed (Payables)": totalAP, 
+                "Total Vendor Spend (YTD)": totalSpend,
+                "Active Vendors": totalVendors,
+                "Top 5 Creditors (Live)": finalChart,
+                "Top 5 By Spend (Concentration Risk)": finalSpend,
+                "Top Defective Suppliers (By Return Value)": Object.keys(finalDefective).length > 0 ? finalDefective : { "No Returns Logged": 0 }
+            };
         }
         break;
 
