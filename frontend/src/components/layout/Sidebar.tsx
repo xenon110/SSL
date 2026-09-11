@@ -46,7 +46,7 @@ const groupedNav = [
       { title: "Working Capital", href: "/working-capital", icon: Wallet },
       { title: "Financial Ratios", href: "/ratios", icon: BarChart3 },
       { title: "Balance Sheet", href: "/balance-sheet", icon: FileText },
-      { title: "Budget vs Actual", href: "/budget", icon: Target },
+
       { title: "Investor Board", href: "/investor", icon: PieChart },
     ]
   },
