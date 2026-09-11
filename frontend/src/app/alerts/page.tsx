@@ -1,19 +1,32 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { RefreshCw, AlertTriangle, CheckCircle, XCircle, Activity, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AlertsPage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const m = d.getMonth();
+    const fyStartYear = m < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/universal-metrics?type=alerts');
+      let url = '/api/universal-metrics?type=alerts';
+      if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
+      const res = await fetch(url);
       const json = await res.json();
       
       if (!res.ok) {
@@ -29,8 +42,16 @@ export default function AlertsPage() {
   };
 
   useEffect(() => {
-    fetchMetrics();
+    fetchMetrics(); // fast Supabase load on mount
   }, []);
+
+  const isDateMounted = React.useRef(false);
+  useEffect(() => {
+    if (!isDateMounted.current) { isDateMounted.current = true; return; }
+    const sd = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
+    const ed = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : undefined;
+    fetchMetrics(sd, ed);
+  }, [dateRange]);
 
   if (isLoading) {
       return <div className="p-8 flex justify-center items-center h-64"><RefreshCw className="animate-spin text-slate-400 w-8 h-8" /></div>;
@@ -45,7 +66,7 @@ export default function AlertsPage() {
           <p className="text-slate-600 mb-6 text-sm">
             {error || "Your Tally sync agent hasn't pushed the data to the database yet."}
           </p>
-          <Button onClick={fetchMetrics} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={() => fetchMetrics()} className="bg-indigo-600 hover:bg-indigo-700">
             <RefreshCw className="w-4 h-4 mr-2" /> Check Again
           </Button>
         </div>
@@ -71,9 +92,12 @@ export default function AlertsPage() {
                   Monitoring Tally Data Stream
               </p>
           </div>
-          <Button onClick={fetchMetrics} variant="outline" className="text-slate-600">
-             <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+            <Button onClick={() => fetchMetrics()} variant="outline" className="text-slate-600">
+               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+            </Button>
+          </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

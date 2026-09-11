@@ -1,30 +1,48 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { AlertTriangle, RefreshCw, TrendingUp, TrendingDown, DollarSign, Building2, Landmark, Database, Receipt, ArrowRight, Target, LayoutDashboard, Calendar as CalendarIcon, Users, PieChart as PieChartIcon, Briefcase, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function ExecutivePage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const m = d.getMonth();
+    const fyStartYear = m < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/executive');
+      let url: string;
+      if (startDate && endDate) {
+        // With date range: use universal-metrics (falls back to Supabase if Tally unreachable)
+        url = `/api/universal-metrics?type=profitability&startDate=${startDate}&endDate=${endDate}`;
+      } else {
+        // Default: use fast executive endpoint (direct Supabase read)
+        url = '/api/executive';
+      }
+      const res = await fetch(url);
       const contentType = res.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error("Please select an active company or wait for the sync script to complete.");
       }
       const json = await res.json();
-      
       if (!res.ok) {
         throw new Error(json.error || "Failed to fetch data");
       }
-      
+      // Both APIs return data under .data
       setData(json.data);
     } catch (err: any) {
       setError(err.message);
@@ -34,8 +52,21 @@ export default function ExecutivePage() {
   };
 
   useEffect(() => {
+    // On first load: always fetch from Supabase (fast)
     fetchMetrics();
   }, []);
+
+  // Only re-fetch with dates when user explicitly changes the date range
+  const isDateMounted = React.useRef(false);
+  useEffect(() => {
+    if (!isDateMounted.current) {
+      isDateMounted.current = true;
+      return;
+    }
+    const sd = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
+    const ed = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : undefined;
+    fetchMetrics(sd, ed);
+  }, [dateRange]);
 
   if (isLoading) {
     return (
@@ -59,7 +90,7 @@ export default function ExecutivePage() {
           <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">No Live Data Yet</h3>
           <p className="text-slate-600 mb-6 text-sm">{error || "Your Tally sync agent hasn't pushed the data yet."}</p>
-          <Button onClick={fetchMetrics} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={() => fetchMetrics()} className="bg-indigo-600 hover:bg-indigo-700">
             <RefreshCw className="w-4 h-4 mr-2" /> Check Again
           </Button>
         </div>
@@ -147,10 +178,7 @@ export default function ExecutivePage() {
             <p className="text-sm font-medium text-slate-500">Live Intelligence Board</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm">
-          <CalendarIcon className="h-4 w-4 text-slate-400" />
-          <span className="text-sm font-medium text-slate-700">01-04-2024 &nbsp;→&nbsp; 10-09-2026</span>
-        </div>
+        <DateRangePicker value={dateRange} onDateChange={setDateRange} />
       </div>
 
       {/* Top 4 KPI Cards */}

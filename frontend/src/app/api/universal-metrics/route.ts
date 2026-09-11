@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import { supabase, fetchAllData } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
 
+const execAsync = promisify(exec);
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     
     const cookieStore = await cookies();
     const activeCompany = cookieStore.get('active-company')?.value;
@@ -17,22 +23,92 @@ export async function GET(request: Request) {
     }
 
     const decodedName = decodeURIComponent(activeCompany);
+    const companySearchTerm = decodedName.split(' - ')[0].trim();
+    
     const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
     if (!comp) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     const companyId = comp.id;
 
-    // Fetch dashboard_metrics for PnL/BS
-    const { data: metricsData } = await supabase
+    let pnl: any = {};
+    let metricsData: any = {};
+
+    // Load Supabase fallback data first (always needed as fallback)
+    const { data: mData } = await supabase
       .from('dashboard_metrics')
       .select('metrics_data')
       .eq('company_id', companyId)
       .eq('dashboard_name', 'Executive Summary')
       .single();
-      
-    const pnl = metricsData?.metrics_data || {};
+
+    // Dynamic Date Range Handling via Event-Driven Queue
+    let dynamicSyncSuccess = false;
+    if (startDate && endDate) {
+        try {
+            // Remove dashes for Tally date format (YYYY-MM-DD -> YYYYMMDD)
+            const sd = startDate.replace(/-/g, '');
+            const ed = endDate.replace(/-/g, '');
+            
+            // 1. Insert request into queue
+            const { data: requestRow, error: insertErr } = await supabase
+              .from('sync_requests')
+              .insert({
+                company_id: companyId,
+                start_date: sd,
+                end_date: ed,
+                status: 'pending'
+              })
+              .select('id')
+              .single();
+              
+            if (insertErr || !requestRow) {
+              console.error("Queue insert error:", insertErr);
+              throw new Error("Failed to queue sync request.");
+            }
+            
+            const reqId = requestRow.id;
+            
+            // 2. Poll for completion (timeout after 45 seconds)
+            let attempts = 0;
+            const maxAttempts = 45; // 45 seconds total
+            
+            while (attempts < maxAttempts) {
+              const { data: checkRow } = await supabase
+                .from('sync_requests')
+                .select('status, result_data')
+                .eq('id', reqId)
+                .single();
+                
+              if (checkRow?.status === 'completed') {
+                metricsData = { metrics_data: checkRow.result_data };
+                pnl = checkRow.result_data;
+                dynamicSyncSuccess = true;
+                break;
+              } else if (checkRow?.status === 'error') {
+                console.error("Sync agent returned error:", checkRow.result_data);
+                break; // Fallback to cache
+              }
+              
+              attempts++;
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            if (!dynamicSyncSuccess) {
+               console.warn("Queue request timed out or errored. Falling back to Supabase cached data.");
+            }
+            
+        } catch (e) {
+            console.error("Event Queue sync failed, falling back to cache:", e);
+        }
+    }
+
+    if (!dynamicSyncSuccess) {
+        // Use Supabase cached YTD data
+        metricsData = mData;
+        pnl = mData?.metrics_data || {};
+    }
+
 
     // Fetch Outstandings (from mv_party_outstandings instead of legacy view)
-    const companySearchTerm = decodedName.split(' - ')[0].trim();
     const { data: outstandings } = await supabase
       .from('mv_party_outstandings')
       .select('*')

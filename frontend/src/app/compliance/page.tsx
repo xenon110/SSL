@@ -10,11 +10,14 @@ export default function CompliancePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/universal-metrics?type=compliance');
+      const url = new URL('/api/universal-metrics?type=compliance', window.location.origin);
+      if (startDate) url.searchParams.append('startDate', startDate);
+      if (endDate) url.searchParams.append('endDate', endDate);
+      const res = await fetch(url.toString());
       const json = await res.json();
       
       if (!res.ok) {
@@ -44,7 +47,7 @@ export default function CompliancePage() {
           <p className="text-slate-600 mb-6 text-sm">
             {error || "Your Tally sync agent hasn't pushed the data to the database yet. Please ensure the sync script is running."}
           </p>
-          <Button onClick={fetchMetrics} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={() => fetchMetrics()} className="bg-indigo-600 hover:bg-indigo-700">
             <RefreshCw className="w-4 h-4 mr-2" /> Check Again
           </Button>
         </div>
@@ -54,7 +57,7 @@ export default function CompliancePage() {
 
   return (
     <div className="p-6 space-y-6">
-      <GenericDashboardView title="Tax & Compliance Dashboard" data={data} />
+      <GenericDashboardView title="Tax & Compliance Dashboard" data={data} onDateChange={(start, end) => fetchMetrics(start, end)} isLoading={isLoading} />
     </div>
   );
 }

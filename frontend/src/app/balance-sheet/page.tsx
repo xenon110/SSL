@@ -3,17 +3,33 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, RefreshCw, Scale, Wallet, Landmark, ShieldAlert, ArrowRight, Building, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 export default function BalanceSheetPage() {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const currentMonth = d.getMonth();
+    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
 
   const fetchMetrics = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/universal-metrics?type=balance-sheet');
+      let url = '/api/universal-metrics?type=balance-sheet';
+      if (dateRange?.from) url += `&startDate=${format(dateRange.from, 'yyyy-MM-dd')}`;
+      if (dateRange?.to) url += `&endDate=${format(dateRange.to, 'yyyy-MM-dd')}`;
+      
+      const res = await fetch(url);
       const json = await res.json();
       
       if (!res.ok) {
@@ -30,7 +46,7 @@ export default function BalanceSheetPage() {
 
   useEffect(() => {
     fetchMetrics();
-  }, []);
+  }, [dateRange]);
 
   if (isLoading) {
     return (
@@ -54,7 +70,7 @@ export default function BalanceSheetPage() {
           <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">No Live Data Yet</h3>
           <p className="text-slate-600 mb-6 text-sm">{error}</p>
-          <Button onClick={fetchMetrics} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+          <Button onClick={() => fetchMetrics()} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md">
             <RefreshCw className="w-4 h-4 mr-2" /> Check Again
           </Button>
         </div>
@@ -123,7 +139,10 @@ export default function BalanceSheetPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Structured view of your company's financial position</p>
         </div>
-        <div className="flex items-center gap-2 mt-4 md:mt-0">
+        <div className="flex items-center gap-4 mt-4 md:mt-0">
+          <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
+             <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+          </div>
           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-md text-xs font-semibold">
             <CheckCircle2 className="h-4 w-4" /> Books Balanced
           </div>

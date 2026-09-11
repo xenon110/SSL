@@ -1,20 +1,33 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { AlertTriangle, RefreshCw, Briefcase, TrendingUp, Shield, Database, Calendar as CalendarIcon, Download, DollarSign, Activity, CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DirectorPage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const d = new Date();
+    const m = d.getMonth();
+    const fyStartYear = m < 3 ? d.getFullYear() - 1 : d.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/universal-metrics?type=director');
+      let url = '/api/universal-metrics?type=director';
+      if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
+      const res = await fetch(url);
       const json = await res.json();
       
       if (!res.ok) {
@@ -30,8 +43,16 @@ export default function DirectorPage() {
   };
 
   useEffect(() => {
-    fetchMetrics();
+    fetchMetrics(); // fast Supabase load on mount
   }, []);
+
+  const isDateMounted = React.useRef(false);
+  useEffect(() => {
+    if (!isDateMounted.current) { isDateMounted.current = true; return; }
+    const sd = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
+    const ed = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : undefined;
+    fetchMetrics(sd, ed);
+  }, [dateRange]);
 
   if (isLoading) {
     return (
@@ -55,7 +76,7 @@ export default function DirectorPage() {
           <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-4" />
           <h3 className="text-base font-semibold text-slate-900 mb-2">No Live Data Yet</h3>
           <p className="text-slate-500 mb-6 text-sm">{error}</p>
-          <Button onClick={fetchMetrics} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 py-2 text-sm">
+          <Button onClick={() => fetchMetrics()} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 py-2 text-sm">
             <RefreshCw className="w-4 h-4 mr-2" /> Refresh Data
           </Button>
         </div>
@@ -118,10 +139,7 @@ export default function DirectorPage() {
           <p className="text-xs font-medium text-slate-500 mt-0.5">Corporate Financial Overview • YTD</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-md text-xs text-slate-600 font-medium">
-            <CalendarIcon className="h-3.5 w-3.5" />
-            FY 2024 - 2025
-          </div>
+          <DateRangePicker value={dateRange} onDateChange={setDateRange} />
           <button className="p-1.5 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
             <Download className="h-4 w-4" />
           </button>

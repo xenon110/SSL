@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -17,11 +17,19 @@ const COLORS = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#8b5cf6', '#0ea5e9'
 interface GenericDashboardViewProps {
   title: string;
   data: Record<string, any>;
+  onDateChange?: (startDate: string, endDate: string) => void;
+  isLoading?: boolean;
 }
 
-export function GenericDashboardView({ title, data }: GenericDashboardViewProps) {
+export function GenericDashboardView({ title, data, onDateChange, isLoading }: GenericDashboardViewProps) {
   const [startDate, setStartDate] = useState<string>("2024-04-01");
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+  const handleApplyDate = () => {
+    if (onDateChange) {
+      onDateChange(startDate, endDate);
+    }
+  };
 
   // Separate scalar values (numbers/strings) from arrays and objects
   // Show EXACT values from Tally — no scaling or calculations
@@ -125,6 +133,13 @@ export function GenericDashboardView({ title, data }: GenericDashboardViewProps)
             onChange={(e) => setEndDate(e.target.value)}
             className="text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 w-[120px] focus:ring-0 cursor-pointer mr-2"
           />
+          <button 
+            onClick={handleApplyDate}
+            disabled={isLoading}
+            className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors whitespace-nowrap"
+          >
+            {isLoading ? "Syncing..." : "Apply Filter"}
+          </button>
         </div>
       </div>
 

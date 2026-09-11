@@ -35,8 +35,13 @@ export function DateRangePicker({
     }
   }, [value])
 
-  // Whenever internal date changes, notify parent
+  // Only notify parent when user changes date (not on initial mount)
+  const isMounted = React.useRef(false);
   React.useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return; // skip first render
+    }
     if (onDateChange) {
       onDateChange(date)
     }
@@ -46,31 +51,25 @@ export function DateRangePicker({
     <div className={cn("grid gap-2", className)}>
       <Popover>
         <PopoverTrigger
-          render={
-            <Button
-              id="date"
-              variant={"outline"}
-              className={cn(
-                "w-[260px] justify-start text-left font-normal border shadow-sm",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4 text-blue-500" />
-              {date?.from ? (
-                date.to ? (
-                  <>
-                    {format(date.from, "LLL dd, y")} -{" "}
-                    {format(date.to, "LLL dd, y")}
-                  </>
-                ) : (
-                  format(date.from, "LLL dd, y")
-                )
+          id="date"
+          className={cn(
+            "flex w-[260px] items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-normal shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors",
+            !date && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="h-4 w-4 text-blue-500 shrink-0" />
+          <span className="truncate">
+            {date?.from ? (
+              date.to ? (
+                <>{format(date.from, "LLL dd, y")} – {format(date.to, "LLL dd, y")}</>
               ) : (
-                <span>Pick a date range</span>
-              )}
-            </Button>
-          }
-        />
+                format(date.from, "LLL dd, y")
+              )
+            ) : (
+              "Pick a date range"
+            )}
+          </span>
+        </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end">
           <div className="flex border-b">
             <div className="flex flex-col gap-1 border-r p-3 w-[175px] bg-muted/20">
