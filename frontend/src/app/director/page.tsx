@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { AlertTriangle, RefreshCw, Briefcase, TrendingUp, Shield, Database, Calendar as CalendarIcon, Download, MoreHorizontal } from "lucide-react";
+import { AlertTriangle, RefreshCw, Briefcase, TrendingUp, Shield, Database, Calendar as CalendarIcon, Download, DollarSign, Activity, CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DirectorPage() {
@@ -38,7 +38,7 @@ export default function DirectorPage() {
       <div className="p-8 space-y-4 animate-pulse bg-slate-50 min-h-screen">
         <div className="h-8 w-48 bg-slate-200 rounded mb-6"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-200 rounded-lg border border-slate-200"></div>)}
+          {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-28 bg-slate-200 rounded-lg border border-slate-200"></div>)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px] mt-4">
           <div className="bg-slate-200 rounded-lg border border-slate-200"></div>
@@ -81,10 +81,14 @@ export default function DirectorPage() {
   };
 
   // Data Extraction
+  const totalRevenue = data["Total Revenue"] || 0;
+  const totalExpenses = data["Total Expenses"] || 0;
   const ebitda = data["EBITDA"] || 0;
   const netProfit = data["Net Profit"] || 0;
-  const debtEquity = data["Debt-Equity Ratio"] || 0;
-  const netWorth = data["Net Worth"] || 0;
+  const cashBalance = data["Cash Balance"] || 0;
+  const workingCapital = data["Working Capital"] || 0;
+  const receivables = data["Receivables"] || 0;
+  const payables = data["Payables"] || 0;
   
   const capStruct = data["Capital Structure"] || {};
   const totalEquity = capStruct["Total Equity"] || 0;
@@ -94,8 +98,8 @@ export default function DirectorPage() {
 
   // Chart Data (Professional Color Palette)
   const capPieData = [
-    { name: "Total Equity", value: Math.abs(totalEquity), realValue: totalEquity, color: "#115e59" }, // Dark Teal
-    { name: "Total Debt", value: Math.abs(totalDebt), realValue: totalDebt, color: "#0ea5e9" } // Professional Blue
+    { name: "Total Equity", value: Math.abs(totalEquity), realValue: totalEquity, color: "#115e59" },
+    { name: "Total Debt", value: Math.abs(totalDebt), realValue: totalDebt, color: "#0ea5e9" }
   ].filter(d => d.value > 0);
 
   const profBarData = [
@@ -124,9 +128,39 @@ export default function DirectorPage() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid - Now 8 dense cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
+        {/* Total Revenue */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-600 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Revenue</h3>
+            <Activity className="h-4 w-4 text-slate-400" />
+          </div>
+          <div className="pl-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+              {formatShortCurrency(totalRevenue)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Total Operating Income</p>
+          </div>
+        </div>
+
+        {/* Total Expenses */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Expenses</h3>
+            <CreditCard className="h-4 w-4 text-slate-400" />
+          </div>
+          <div className="pl-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+              {formatShortCurrency(totalExpenses)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Total Operating Costs</p>
+          </div>
+        </div>
+
         {/* EBITDA */}
         <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
           <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500 rounded-l-lg"></div>
@@ -157,29 +191,63 @@ export default function DirectorPage() {
           </div>
         </div>
 
-        {/* Debt Equity */}
+        {/* Cash Balance */}
         <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500 rounded-l-lg"></div>
+          <div className="absolute top-0 left-0 w-1 h-full bg-teal-600 rounded-l-lg"></div>
           <div className="flex justify-between items-start pl-2">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Debt-Equity Ratio</h3>
-            <Shield className="h-4 w-4 text-slate-400" />
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cash Balance</h3>
+            <Wallet className="h-4 w-4 text-slate-400" />
           </div>
           <div className="pl-2">
-            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{debtEquity}</h2>
-            <p className="text-xs text-slate-400 mt-1">Financial Leverage</p>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+              {formatShortCurrency(cashBalance)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Total Cash & Bank</p>
           </div>
         </div>
 
-        {/* Net Worth */}
+        {/* Working Capital */}
         <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-teal-700 rounded-l-lg"></div>
+          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 rounded-l-lg"></div>
           <div className="flex justify-between items-start pl-2">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Worth</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Working Capital</h3>
+            <Shield className="h-4 w-4 text-slate-400" />
+          </div>
+          <div className="pl-2">
+            <h2 className={`text-2xl font-bold tracking-tight ${workingCapital < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+              {formatShortCurrency(workingCapital)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Operational Liquidity</p>
+          </div>
+        </div>
+
+        {/* Receivables */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-green-500 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Receivables</h3>
+            <DollarSign className="h-4 w-4 text-slate-400" />
+          </div>
+          <div className="pl-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+              {formatShortCurrency(receivables)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Pending Inward</p>
+          </div>
+        </div>
+
+        {/* Payables */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-orange-500 rounded-l-lg"></div>
+          <div className="flex justify-between items-start pl-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Payables</h3>
             <Database className="h-4 w-4 text-slate-400" />
           </div>
           <div className="pl-2">
-            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{formatShortCurrency(netWorth)}</h2>
-            <p className="text-xs text-slate-400 mt-1">Total Company Equity</p>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+              {formatShortCurrency(payables)}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Pending Outward</p>
           </div>
         </div>
 
@@ -192,7 +260,6 @@ export default function DirectorPage() {
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col">
           <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-700">Capital Structure Analysis</h3>
-            <MoreHorizontal className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-600" />
           </div>
           <div className="p-4 flex-1 flex flex-col md:flex-row items-center gap-6">
             <div className="h-[220px] w-full md:w-1/2 relative">
@@ -246,14 +313,14 @@ export default function DirectorPage() {
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col">
           <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-700">Profitability Waterfall</h3>
-            <MoreHorizontal className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-600" />
           </div>
           <div className="p-4 flex-1 h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              {/* FIXED MARGINS SO Y-AXIS LABELS DON'T CUT OFF */}
+              <BarChart data={profBarData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={true} stroke="#cbd5e1" tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => formatShortCurrency(v)} />
+                <YAxis width={60} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => formatShortCurrency(v)} />
                 <Tooltip 
                   formatter={(val: any) => [formatCurrency(val), "Amount"]}
                   cursor={{ fill: '#f8fafc' }}

@@ -192,10 +192,16 @@ export async function GET(request: Request) {
       case 'investor':
       case 'director':
         data = {
+          "Total Revenue": pnl["Total Revenue"] || 0,
+          "Total Expenses": pnl["Total Expenses"] || 0,
           "EBITDA": pnl["EBITDA"] || 0,
           "Net Profit": pnl["Net Profit"] || 0,
           "Debt-Equity Ratio": pnl["Debt-Equity Ratio"] || 0,
           "Net Worth": pnl["Net Worth"] || 0,
+          "Working Capital": pnl["Working Capital"] || 0,
+          "Cash Balance": pnl["Cash in Bank"] || 0,
+          "Receivables": totalAR,
+          "Payables": totalAP,
           
           "Capital Structure": {
              "Total Equity": pnl["Net Worth"] || 0,
