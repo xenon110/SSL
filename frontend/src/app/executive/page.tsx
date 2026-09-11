@@ -71,6 +71,11 @@ export default function ExecutivePage() {
   if (isLoading) {
     return (
       <div className="p-8 space-y-6 animate-pulse">
+        <div className="flex flex-col items-center justify-center p-8 mb-6 text-center bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800/30">
+          <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Calculating live data from Tally...</h3>
+          <p className="text-sm text-slate-500 max-w-md">Please wait. For large date ranges, Tally must process all historical vouchers which can take a few minutes.</p>
+        </div>
         <div className="h-10 w-64 bg-slate-200 dark:bg-slate-800 rounded-lg mb-8"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[1,2,3,4].map(i => <div key={i} className="h-36 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>)}
