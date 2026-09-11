@@ -77,7 +77,16 @@ if __name__ == "__main__":
     log("Started Tally Event-Driven Queue Listener")
     log("Waiting for requests from Supabase...")
     
-    # Simple polling loop. In production, Realtime could be used, but polling every 2s is extremely cheap and robust.
+    start_time = time.time()
+    MAX_RUNTIME_SECONDS = 60 * 60 # 60 minutes
+    
+    # Simple polling loop.
     while True:
         process_queue()
+        
+        # Check if 60 minutes have passed
+        if time.time() - start_time > MAX_RUNTIME_SECONDS:
+            log("60 minutes reached. Shutting down cleanly to allow auto-updater to run...")
+            break
+            
         time.sleep(2)
