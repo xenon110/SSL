@@ -138,12 +138,13 @@ export async function GET(request: Request) {
         break;
         
       case 'working-capital':
+        const wcBreakdown = metricsData?.metrics_data?.["BS Breakdown"] || {};
         data = {
-          "Current Assets": (pnl["Working Capital"] || 0) + (pnl["Current Ratio"] ? 1000000 : 0),
-          "Current Liabilities": (pnl["Working Capital"] || 0) > 0 ? (pnl["Working Capital"] * 0.8) : 0,
+          "Current Assets": wcBreakdown["Current Assets"] || 0,
+          "Current Liabilities": wcBreakdown["Current Liabilities"] || 0,
           "Working Capital": pnl["Working Capital"] || 0,
-          "Receivables": totalAR,
-          "Payables": totalAP,
+          "Receivables": wcBreakdown["Sundry Debtors"] || totalAR,
+          "Payables": wcBreakdown["Sundry Creditors"] || totalAP,
           "Cash Balance": pnl["Cash in Bank"] || 0
         };
         break;
@@ -191,6 +192,7 @@ export async function GET(request: Request) {
         
       case 'investor':
       case 'director':
+        const dirBreakdown = metricsData?.metrics_data?.["BS Breakdown"] || {};
         data = {
           "Total Revenue": pnl["Total Revenue"] || 0,
           "Total Expenses": pnl["Total Expenses"] || 0,
@@ -200,8 +202,8 @@ export async function GET(request: Request) {
           "Net Worth": pnl["Net Worth"] || 0,
           "Working Capital": pnl["Working Capital"] || 0,
           "Cash Balance": pnl["Cash in Bank"] || 0,
-          "Receivables": totalAR,
-          "Payables": totalAP,
+          "Receivables": dirBreakdown["Sundry Debtors"] || totalAR,
+          "Payables": dirBreakdown["Sundry Creditors"] || totalAP,
           
           "Capital Structure": {
              "Total Equity": pnl["Net Worth"] || 0,
