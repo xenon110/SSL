@@ -268,16 +268,6 @@ export default function PurchaseDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <a
-            href={predictionUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-lg shadow-md hover:scale-102 active:scale-98 transition-all duration-200"
-          >
-            <Sparkles className="h-4 w-4 text-white animate-pulse" />
-            AI Future Prediction
-          </a>
-          
           <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
              <DateRangePicker value={dateRange} onDateChange={setDateRange} />
           </div>
@@ -290,7 +280,7 @@ export default function PurchaseDashboard() {
         <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700 fade-in fill-mode-both">
       
       {/* KPI Scorecards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-3">
         <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300">
           <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign className="w-24 h-24 text-blue-600" /></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
@@ -324,16 +314,8 @@ export default function PurchaseDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-all hover:shadow-xl hover:-translate-y-1 duration-300">
-          <div className="absolute top-0 right-0 p-4 opacity-10"><AlertCircle className="w-24 h-24 text-rose-600" /></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500">Pending POs</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center"><AlertCircle className="h-4 w-4 text-rose-600" /></div>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.pendingOrders.value)}</div>
-          </CardContent>
-        </Card>
+
+
       </div>
 
       {/* Row 2: Charts */}
@@ -380,7 +362,7 @@ export default function PurchaseDashboard() {
                   <XAxis type="number" tickFormatter={(v) => formatCompact(v)} fontSize={12} stroke="#94a3b8" />
                   <YAxis dataKey="name" type="category" width={180} fontSize={12} fontWeight={500} tickFormatter={(v: string) => v.length > 22 ? v.substring(0, 20) + '…' : v} tick={{ fill: '#475569', cursor: 'pointer' }} />
                   <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Bar dataKey="purchases" radius={[0, 8, 8, 0]} barSize={28} cursor="pointer" onClick={(b) => b?.name && setDrillDown({ type: 'product', name: b.name })}>
+                  <Bar dataKey="purchases" radius={[0, 8, 8, 0]} barSize={28}>
                     {(data.purchasesByProduct || []).map((_: any, i: number) => <Cell key={i} fill={i === 0 ? '#10b981' : '#34d399'} className="hover:opacity-80 transition-opacity" />)}
                   </Bar>
                 </BarChart>
@@ -402,7 +384,7 @@ export default function PurchaseDashboard() {
                   <XAxis type="number" tickFormatter={(v) => formatCompact(v)} fontSize={12} stroke="#94a3b8" />
                   <YAxis dataKey="name" type="category" width={180} fontSize={12} fontWeight={500} tickFormatter={(v: string) => v.length > 22 ? v.substring(0, 20) + '…' : v} tick={{ fill: '#475569', cursor: 'pointer' }} />
                   <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Bar dataKey="purchases" radius={[0, 8, 8, 0]} barSize={28} cursor="pointer" onClick={(b) => b?.name && setDrillDown({ type: 'supplier', name: b.name })}>
+                  <Bar dataKey="purchases" radius={[0, 8, 8, 0]} barSize={28}>
                     {(data.topSuppliers || []).map((_: any, i: number) => <Cell key={i} fill={i === 0 ? '#3b82f6' : '#60a5fa'} className="hover:opacity-80 transition-opacity" />)}
                   </Bar>
                 </BarChart>
