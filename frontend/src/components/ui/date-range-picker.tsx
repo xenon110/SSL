@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { addDays, format } from "date-fns"
+import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 
-import { cn } from "@/lib/utils"
+import { cn, formatDateOnly } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -23,29 +23,43 @@ export function DateRangePicker({
   value?: DateRange;
   onDateChange?: (date: DateRange | undefined) => void;
 }) {
-  const [date, setDate] = React.useState<DateRange | undefined>(value || {
-    from: new Date(new Date().getFullYear(), 0, 1),
-    to: new Date()
-  })
+  const [date, setDate] = React.useState<DateRange | undefined>(() => {
+    if (value) return value;
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 30);
+    return { from, to };
+  });
 
-  // Keep internal state in sync with external value prop
+  // Keep internal state in sync with external value prop if changed
+  const lastExternalValue = React.useRef<string>("");
   React.useEffect(() => {
-    if (value) {
+    if (!value) return;
+    const valKey = `${value.from ? formatDateOnly(value.from) : ''}_${value.to ? formatDateOnly(value.to) : ''}`;
+    if (valKey !== lastExternalValue.current) {
+      lastExternalValue.current = valKey;
       setDate(value);
     }
-  }, [value])
+  }, [value]);
 
-  // Only notify parent when user changes date (not on initial mount)
-  const isMounted = React.useRef(false);
+  // Store onDateChange in a ref so changes in inline function identity do not trigger useEffect
+  const onDateChangeRef = React.useRef(onDateChange);
   React.useEffect(() => {
-    if (!isMounted.current) {
-      isMounted.current = true;
-      return; // skip first render
+    onDateChangeRef.current = onDateChange;
+  }, [onDateChange]);
+
+  // Notify parent only when date range value actually changes
+  const lastNotifiedValue = React.useRef<string>("");
+  React.useEffect(() => {
+    if (!date?.from) return;
+    const currentKey = `${formatDateOnly(date.from)}_${date.to ? formatDateOnly(date.to) : formatDateOnly(date.from)}`;
+    if (currentKey !== lastNotifiedValue.current) {
+      lastNotifiedValue.current = currentKey;
+      if (onDateChangeRef.current) {
+        onDateChangeRef.current(date);
+      }
     }
-    if (onDateChange) {
-      onDateChange(date)
-    }
-  }, [date])
+  }, [date]);
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -88,7 +102,7 @@ export function DateRangePicker({
                  d.setDate(d.getDate() - 6);
                  setDate({ from: d, to: new Date() });
                }}>Last 7 Days</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
+               <Button variant="ghost" className="justify-start text-xs h-8 px-2 font-medium text-indigo-600" onClick={() => {
                  const d = new Date();
                  d.setDate(d.getDate() - 29);
                  setDate({ from: d, to: new Date() });
@@ -116,7 +130,7 @@ export function DateRangePicker({
                  else { qStart = 0; qEnd = 2; }
                  setDate({ from: new Date(d.getFullYear(), qStart, 1), to: new Date(d.getFullYear(), qEnd + 1, 0) });
                }}>Financial Quarter</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2 animate-pulse text-blue-600 font-medium" onClick={() => {
+               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
                  const d = new Date();
                  const m = d.getMonth();
                  const fyStart = m < 3 ? d.getFullYear() - 1 : d.getFullYear();

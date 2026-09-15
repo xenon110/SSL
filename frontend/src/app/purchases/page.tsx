@@ -17,19 +17,22 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+import { formatDateOnly } from "@/lib/utils";
+
 export default function PurchaseDashboard() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const d = new Date();
-    const currentMonth = d.getMonth();
-    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
-    return {
-      from: new Date(fyStartYear, 3, 1),
-      to: new Date(fyStartYear + 1, 2, 31)
-    };
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 30);
+    return { from, to };
   });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdjustedView, setIsAdjustedView] = useState(false);
+
+  // Derived primitive date strings for stable dependencies
+  const startDateStr = dateRange?.from ? formatDateOnly(dateRange.from) : "";
+  const endDateStr = dateRange?.to ? formatDateOnly(dateRange.to) : "";
 
   // Drill-down States
   const [drillDown, setDrillDown] = useState<{ type: 'product' | 'supplier'; name: string } | null>(null);
@@ -51,8 +54,8 @@ export default function PurchaseDashboard() {
         setIsLoading(true);
         let url = '/api/purchases';
         const params = new URLSearchParams();
-        if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-        if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+        if (startDateStr) params.append('startDate', startDateStr);
+        if (endDateStr) params.append('endDate', endDateStr);
         if (isAdjustedView) params.append('adjusted', 'true');
         if (params.toString()) url += '?' + params.toString();
         
@@ -69,7 +72,7 @@ export default function PurchaseDashboard() {
       }
     }
     fetchLiveData();
-  }, [dateRange, isAdjustedView]);
+  }, [startDateStr, endDateStr, isAdjustedView]);
 
   // Reset drill-down sub-states when closing or changing main target
   useEffect(() => {
@@ -235,11 +238,11 @@ export default function PurchaseDashboard() {
   const predictionUrl = useMemo(() => {
     let url = '/purchases/prediction';
     const params = new URLSearchParams();
-    if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-    if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+    if (startDateStr) params.append('startDate', startDateStr);
+    if (endDateStr) params.append('endDate', endDateStr);
     if (params.toString()) url += '?' + params.toString();
     return url;
-  }, [dateRange]);
+  }, [startDateStr, endDateStr]);
 
   return (
     <div className="flex-1 space-y-6 pb-8 px-2 animate-in fade-in duration-700">
@@ -267,11 +270,6 @@ export default function PurchaseDashboard() {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
-             <DateRangePicker value={dateRange} onDateChange={setDateRange} />
-          </div>
-        </div>
       </div>
 
       {(isLoading || !data) ? (
@@ -288,7 +286,7 @@ export default function PurchaseDashboard() {
             <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center"><DollarSign className="h-4 w-4 text-blue-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.totalPurchases.value)}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis?.totalPurchases?.value ?? 0)}</div>
           </CardContent>
         </Card>
 
@@ -299,7 +297,7 @@ export default function PurchaseDashboard() {
             <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center"><Activity className="h-4 w-4 text-indigo-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.avgOrderValue.value)}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis?.avgOrderValue?.value ?? 0)}</div>
           </CardContent>
         </Card>
 
@@ -310,7 +308,7 @@ export default function PurchaseDashboard() {
             <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center"><Truck className="h-4 w-4 text-emerald-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{kpis.activeSuppliers.value}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{kpis?.activeSuppliers?.value ?? 0}</div>
           </CardContent>
         </Card>
 
@@ -329,7 +327,7 @@ export default function PurchaseDashboard() {
           </CardHeader>
           <CardContent className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.purchaseTrend} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
+              <AreaChart data={data?.purchaseTrend || []} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
@@ -456,8 +454,8 @@ export default function PurchaseDashboard() {
                       <TableRow key={i}>
                         <TableCell className="text-xs font-medium text-slate-700 dark:text-slate-200">{c.name}</TableCell>
                         <TableCell className="text-right text-xs">
-                           <Badge variant={c.dependencyPercentage > 40 ? "destructive" : "outline"} className="text-[10px]">
-                              {c.dependencyPercentage.toFixed(1)}%
+                           <Badge variant={(c?.dependencyPercentage ?? 0) > 40 ? "destructive" : "outline"} className="text-[10px]">
+                              {(c?.dependencyPercentage ?? 0).toFixed(1)}%
                            </Badge>
                         </TableCell>
                         <TableCell className="text-right text-xs tabular-nums">{formatCurrency(c.sales)}</TableCell>

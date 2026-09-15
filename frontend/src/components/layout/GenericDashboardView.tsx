@@ -12,22 +12,25 @@ import {
 import { Activity, TrendingUp, DollarSign, AlertCircle, PieChart as PieChartIcon, BarChart3, Users, Zap, Calendar as CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { formatDateOnly } from "@/lib/utils";
+
 const COLORS = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#8b5cf6', '#0ea5e9', '#14b8a6', '#ec4899'];
 
 interface GenericDashboardViewProps {
   title: string;
-  data: Record<string, any>;
+  data?: Record<string, any>;
   onDateChange?: (startDate: string, endDate: string) => void;
   isLoading?: boolean;
 }
 
-export function GenericDashboardView({ title, data, onDateChange, isLoading }: GenericDashboardViewProps) {
-  const [startDate, setStartDate] = useState<string>("2024-04-01");
-  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
-
-  const handleApplyDate = () => {
-    if (onDateChange) {
-      onDateChange(startDate, endDate);
+export function GenericDashboardView({ title, data = {}, onDateChange, isLoading }: GenericDashboardViewProps) {
+  const handleDatePickerChange = (range: DateRange | undefined) => {
+    if (range?.from && onDateChange) {
+      const startStr = formatDateOnly(range.from);
+      const endStr = range.to ? formatDateOnly(range.to) : startStr;
+      onDateChange(startStr, endStr);
     }
   };
 
@@ -37,7 +40,8 @@ export function GenericDashboardView({ title, data, onDateChange, isLoading }: G
   const lists: { key: string; items: any[] }[] = [];
   const objects: { key: string; value: Record<string, any> }[] = [];
 
-  Object.entries(data).forEach(([key, value]) => {
+  const safeData = data || {};
+  Object.entries(safeData).forEach(([key, value]) => {
     if (Array.isArray(value)) {
       lists.push({ key, items: value });
     } else if (typeof value === "object" && value !== null) {
@@ -118,29 +122,11 @@ export function GenericDashboardView({ title, data, onDateChange, isLoading }: G
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-lg shadow-sm">
-          <CalendarIcon className="h-4 w-4 text-slate-500 ml-2" />
-          <input 
-            type="date" 
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 w-[120px] focus:ring-0 cursor-pointer"
-          />
-          <span className="text-slate-300 dark:text-slate-600">-</span>
-          <input 
-            type="date" 
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 w-[120px] focus:ring-0 cursor-pointer mr-2"
-          />
-          <button 
-            onClick={handleApplyDate}
-            disabled={isLoading}
-            className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors whitespace-nowrap"
-          >
-            {isLoading ? "Syncing..." : "Apply Filter"}
-          </button>
-        </div>
+        {isLoading && (
+          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
+            Syncing...
+          </span>
+        )}
       </div>
 
       <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700 fade-in fill-mode-both">

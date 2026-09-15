@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabase, fetchAllData } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { parseLocalDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 function getTimeBucket(dateString: string, startDateStr: string | null, endDateStr: string | null) {
-  const d = new Date(dateString);
+  const d = parseLocalDate(dateString);
   let bucketType = 'monthly';
   
   if (startDateStr && endDateStr) {
-    const start = new Date(startDateStr).getTime();
-    const end = new Date(endDateStr).getTime();
+    const start = parseLocalDate(startDateStr).getTime();
+    const end = parseLocalDate(endDateStr).getTime();
     const diffDays = (end - start) / (1000 * 3600 * 24);
     
     if (diffDays <= 31) bucketType = 'daily';
@@ -173,7 +174,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("Dashboard API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(getEmptyState(), { status: 200 });
   }
 }
 

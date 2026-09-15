@@ -16,12 +16,8 @@ export async function GET(request: Request) {
     const endDate = searchParams.get('endDate');
     
     const cookieStore = await cookies();
-    const activeCompany = cookieStore.get('active-company')?.value;
+    const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
     
-    if (!activeCompany) {
-      return NextResponse.json({ error: 'No active company selected' }, { status: 400 });
-    }
-
     const decodedName = decodeURIComponent(activeCompany);
     const companySearchTerm = decodedName.split(' - ')[0].trim();
     
@@ -40,72 +36,8 @@ export async function GET(request: Request) {
       .eq('dashboard_name', 'Executive Summary')
       .single();
 
-    // Dynamic Date Range Handling via Event-Driven Queue
-    let dynamicSyncSuccess = false;
-    if (startDate && endDate) {
-        try {
-            // Remove dashes for Tally date format (YYYY-MM-DD -> YYYYMMDD)
-            const sd = startDate.replace(/-/g, '');
-            const ed = endDate.replace(/-/g, '');
-            
-            // 1. Insert request into queue
-            const { data: requestRow, error: insertErr } = await supabase
-              .from('sync_requests')
-              .insert({
-                company_id: companyId,
-                start_date: sd,
-                end_date: ed,
-                status: 'pending'
-              })
-              .select('id')
-              .single();
-              
-            if (insertErr || !requestRow) {
-              console.error("Queue insert error:", insertErr);
-              throw new Error("Failed to queue sync request.");
-            }
-            
-            const reqId = requestRow.id;
-            
-            // 2. Poll for completion (timeout after 45 seconds)
-            let attempts = 0;
-            const maxAttempts = 45; // 45 seconds total
-            
-            while (attempts < maxAttempts) {
-              const { data: checkRow } = await supabase
-                .from('sync_requests')
-                .select('status, result_data')
-                .eq('id', reqId)
-                .single();
-                
-              if (checkRow?.status === 'completed') {
-                metricsData = { metrics_data: checkRow.result_data };
-                pnl = checkRow.result_data;
-                dynamicSyncSuccess = true;
-                break;
-              } else if (checkRow?.status === 'error') {
-                console.error("Sync agent returned error:", checkRow.result_data);
-                break; // Fallback to cache
-              }
-              
-              attempts++;
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            if (!dynamicSyncSuccess) {
-               console.warn("Queue request timed out or errored. Falling back to Supabase cached data.");
-            }
-            
-        } catch (e) {
-            console.error("Event Queue sync failed, falling back to cache:", e);
-        }
-    }
-
-    if (!dynamicSyncSuccess) {
-        // Use Supabase cached YTD data
-        metricsData = mData;
-        pnl = mData?.metrics_data || {};
-    }
+    metricsData = mData;
+    pnl = mData?.metrics_data || {};
 
 
     // Fetch Outstandings (from mv_party_outstandings instead of legacy view)

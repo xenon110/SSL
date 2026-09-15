@@ -7,66 +7,35 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, 
 import { AlertTriangle, RefreshCw, TrendingUp, TrendingDown, DollarSign, Building2, Landmark, Database, Receipt, ArrowRight, Target, LayoutDashboard, Calendar as CalendarIcon, Users, PieChart as PieChartIcon, Briefcase, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { formatDateOnly } from "@/lib/utils";
+
 export default function ExecutivePage() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const d = new Date();
-    const m = d.getMonth();
-    const fyStartYear = m < 3 ? d.getFullYear() - 1 : d.getFullYear();
-    return {
-      from: new Date(fyStartYear, 3, 1),
-      to: new Date(fyStartYear + 1, 2, 31)
-    };
-  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async (startDate?: string, endDate?: string) => {
+  const fetchMetrics = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      let url: string;
-      if (startDate && endDate) {
-        // With date range: use universal-metrics (falls back to Supabase if Tally unreachable)
-        url = `/api/universal-metrics?type=profitability&startDate=${startDate}&endDate=${endDate}`;
-      } else {
-        // Default: use fast executive endpoint (direct Supabase read)
-        url = '/api/executive';
-      }
-      const res = await fetch(url);
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("Please select an active company or wait for the sync script to complete.");
+      const res = await fetch('/api/executive');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to fetch metrics');
       }
       const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "Failed to fetch data");
-      }
-      // Both APIs return data under .data
-      setData(json.data);
-    } catch (err: any) {
-      setError(err.message);
+      setData(json.data || json);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // On first load: always fetch from Supabase (fast)
     fetchMetrics();
   }, []);
-
-  // Only re-fetch with dates when user explicitly changes the date range
-  const isDateMounted = React.useRef(false);
-  useEffect(() => {
-    if (!isDateMounted.current) {
-      isDateMounted.current = true;
-      return;
-    }
-    const sd = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
-    const ed = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : undefined;
-    fetchMetrics(sd, ed);
-  }, [dateRange]);
 
   if (isLoading) {
     return (
@@ -78,7 +47,7 @@ export default function ExecutivePage() {
         </div>
         <div className="h-10 w-64 bg-slate-200 dark:bg-slate-800 rounded-lg mb-8"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1,2,3,4].map(i => <div key={i} className="h-36 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>)}
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-36 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[400px]">
           <div className="col-span-2 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
@@ -170,7 +139,7 @@ export default function ExecutivePage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto bg-[#fafbfc] min-h-screen">
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
@@ -183,7 +152,6 @@ export default function ExecutivePage() {
             <p className="text-sm font-medium text-slate-500">Live Intelligence Board</p>
           </div>
         </div>
-        <DateRangePicker value={dateRange} onDateChange={setDateRange} />
       </div>
 
       {/* Top 4 KPI Cards */}
@@ -235,7 +203,7 @@ export default function ExecutivePage() {
 
       {/* Middle Row: Chart & Expense Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* Total Revenue Chart Area */}
         <div className="lg:col-span-6 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <div className="flex justify-between items-start mb-6">
@@ -255,19 +223,19 @@ export default function ExecutivePage() {
               Revenue Trend
             </div>
           </div>
-          
+
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `${(v/10000000).toFixed(0)}Cr`} />
-                <Tooltip 
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `${(v / 10000000).toFixed(0)}Cr`} />
+                <Tooltip
                   formatter={(val: any) => [formatShortCurrency(val || 0), "Revenue"]}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
@@ -289,11 +257,11 @@ export default function ExecutivePage() {
 
           <div className="space-y-5 flex-1">
             {[
-              { label: "Total Expenses", value: totalExpenses, color: "bg-blue-500", icon: <Users className="h-4 w-4 text-blue-600"/>, bg: "bg-blue-50" },
-              { label: "Direct Expenses", value: directExp, color: "bg-emerald-500", icon: <DollarSign className="h-4 w-4 text-emerald-600"/>, bg: "bg-emerald-50" },
-              { label: "Indirect Expenses", value: indirectExp, color: "bg-purple-500", icon: <Briefcase className="h-4 w-4 text-purple-600"/>, bg: "bg-purple-50" },
-              { label: "Working Capital", value: workingCapital, color: "bg-orange-500", icon: <Landmark className="h-4 w-4 text-orange-600"/>, bg: "bg-orange-50" },
-              { label: "Accounts Payable", value: accountsPayable, color: "bg-sky-500", icon: <Receipt className="h-4 w-4 text-sky-600"/>, bg: "bg-sky-50" },
+              { label: "Total Expenses", value: totalExpenses, color: "bg-blue-500", icon: <Users className="h-4 w-4 text-blue-600" />, bg: "bg-blue-50" },
+              { label: "Direct Expenses", value: directExp, color: "bg-emerald-500", icon: <DollarSign className="h-4 w-4 text-emerald-600" />, bg: "bg-emerald-50" },
+              { label: "Indirect Expenses", value: indirectExp, color: "bg-purple-500", icon: <Briefcase className="h-4 w-4 text-purple-600" />, bg: "bg-purple-50" },
+              { label: "Working Capital", value: workingCapital, color: "bg-orange-500", icon: <Landmark className="h-4 w-4 text-orange-600" />, bg: "bg-orange-50" },
+              { label: "Accounts Payable", value: accountsPayable, color: "bg-sky-500", icon: <Receipt className="h-4 w-4 text-sky-600" />, bg: "bg-sky-50" },
             ].map((item, i) => {
               const pct = totalExpenses > 0 ? Math.min(100, (item.value / totalExpenses) * 100) : 0;
               return (
@@ -320,7 +288,7 @@ export default function ExecutivePage() {
             <Database className="h-5 w-5 text-slate-700" />
             <h3 className="text-base font-bold text-slate-900">Expense Distribution</h3>
           </div>
-          
+
           <div className="h-[200px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -365,22 +333,22 @@ export default function ExecutivePage() {
       {/* Bottom KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { title: "Current Ratio", value: data["Current Ratio"] || "0.00", icon: <PieChartIcon/>, color: "blue", trend: "+0.42" },
-          { title: "Quick Ratio", value: data["Quick Ratio"] || "0.00", icon: <Target/>, color: "amber", trend: "+0.31" },
-          { title: "Debt : Equity Ratio", value: data["Debt-Equity Ratio"] || "0.00", icon: <Database/>, color: "rose", trend: "+0.02" },
-          { title: "Capital Employed", value: formatCurrency(data["Capital Employed"] || 0), icon: <Building2/>, color: "emerald", trend: "+9.8%" },
-          { title: "Total Expenses (Key)", value: formatCurrency(totalExpenses), icon: <Users/>, color: "purple", trend: "+10.6%" },
+          { title: "Current Ratio", value: data["Current Ratio"] || "0.00", icon: <PieChartIcon />, color: "blue", trend: "+0.42" },
+          { title: "Quick Ratio", value: data["Quick Ratio"] || "0.00", icon: <Target />, color: "amber", trend: "+0.31" },
+          { title: "Debt : Equity Ratio", value: data["Debt-Equity Ratio"] || "0.00", icon: <Database />, color: "rose", trend: "+0.02" },
+          { title: "Capital Employed", value: formatCurrency(data["Capital Employed"] || 0), icon: <Building2 />, color: "emerald", trend: "+9.8%" },
+          { title: "Total Expenses (Key)", value: formatCurrency(totalExpenses), icon: <Users />, color: "purple", trend: "+10.6%" },
         ].map((kpi, i) => {
-          const bgMap:any = {
+          const bgMap: any = {
             blue: "bg-[#f8faff] border-blue-100", amber: "bg-[#fffdf8] border-amber-100",
             rose: "bg-[#fff7f8] border-rose-100", emerald: "bg-[#f6fcf8] border-emerald-100",
             purple: "bg-[#fdfaff] border-purple-100"
           };
-          const textMap:any = {
+          const textMap: any = {
             blue: "text-blue-600", amber: "text-amber-600", rose: "text-rose-600",
             emerald: "text-emerald-600", purple: "text-purple-600"
           };
-          const iconBgMap:any = {
+          const iconBgMap: any = {
             blue: "bg-blue-100", amber: "bg-amber-100", rose: "bg-rose-100",
             emerald: "bg-emerald-100", purple: "bg-purple-100"
           };
@@ -412,7 +380,7 @@ export default function ExecutivePage() {
       {/* Bottom Minimal Strip */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between shadow-sm px-8">
         <div className="flex items-center gap-4">
-          <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><TrendingUp className="h-5 w-5"/></div>
+          <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><TrendingUp className="h-5 w-5" /></div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">Total Income</p>
             <p className="text-sm font-extrabold text-slate-900">{formatCurrency(totalRevenue)}</p>
@@ -420,7 +388,7 @@ export default function ExecutivePage() {
         </div>
         <div className="hidden md:block w-px h-8 bg-slate-200"></div>
         <div className="flex items-center gap-4">
-          <div className="bg-rose-50 p-2 rounded-lg text-rose-600"><TrendingDown className="h-5 w-5"/></div>
+          <div className="bg-rose-50 p-2 rounded-lg text-rose-600"><TrendingDown className="h-5 w-5" /></div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">Total Expenses</p>
             <p className="text-sm font-extrabold text-slate-900">{formatCurrency(totalExpenses)}</p>
@@ -428,7 +396,7 @@ export default function ExecutivePage() {
         </div>
         <div className="hidden md:block w-px h-8 bg-slate-200"></div>
         <div className="flex items-center gap-4">
-          <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Activity className="h-5 w-5"/></div>
+          <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Activity className="h-5 w-5" /></div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase">Net Position</p>
             <p className="text-sm font-extrabold text-slate-900">{formatCurrency(totalAssets - totalExpenses)}</p>

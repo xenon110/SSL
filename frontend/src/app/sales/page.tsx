@@ -17,19 +17,22 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+import { formatDateOnly } from "@/lib/utils";
+
 export default function SalesDashboard() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const d = new Date();
-    const currentMonth = d.getMonth();
-    const fyStartYear = currentMonth < 3 ? d.getFullYear() - 1 : d.getFullYear();
-    return {
-      from: new Date(fyStartYear, 3, 1),
-      to: new Date(fyStartYear + 1, 2, 31)
-    };
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 30);
+    return { from, to };
   });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdjustedView, setIsAdjustedView] = useState(false);
+  
+  // Derived primitive date strings for stable dependencies
+  const startDateStr = dateRange?.from ? formatDateOnly(dateRange.from) : "";
+  const endDateStr = dateRange?.to ? formatDateOnly(dateRange.to) : "";
   
   // Drill-down States
   const [drillDown, setDrillDown] = useState<{ type: 'product' | 'customer' | 'region' | 'state'; name: string } | null>(null);
@@ -49,8 +52,8 @@ export default function SalesDashboard() {
       setAiError(null);
       let url = '/api/sales/ai';
       const params = new URLSearchParams();
-      if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-      if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+      if (startDateStr) params.append('startDate', startDateStr);
+      if (endDateStr) params.append('endDate', endDateStr);
       if (isAdjustedView) params.append('adjusted', 'true');
       if (params.toString()) url += '?' + params.toString();
 
@@ -71,7 +74,7 @@ export default function SalesDashboard() {
     } finally {
       setIsAiLoading(false);
     }
-  }, [dateRange, isAdjustedView]);
+  }, [startDateStr, endDateStr, isAdjustedView, data]);
 
   useEffect(() => {
     if (showAiPanel && !aiData && !isAiLoading) {
@@ -81,7 +84,7 @@ export default function SalesDashboard() {
 
   useEffect(() => {
     setAiData(null);
-  }, [dateRange]);
+  }, [startDateStr, endDateStr]);
 
   // KPI Detail States
   const [selectedKpi, setSelectedKpi] = useState<'gross' | 'net' | 'returns' | 'pending' | null>(null);
@@ -109,8 +112,8 @@ export default function SalesDashboard() {
         setIsLoading(true);
         let url = '/api/dashboard';
         const params = new URLSearchParams();
-        if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-        if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+        if (startDateStr) params.append('startDate', startDateStr);
+        if (endDateStr) params.append('endDate', endDateStr);
         if (isAdjustedView) params.append('adjusted', 'true');
         if (params.toString()) url += '?' + params.toString();
         
@@ -118,8 +121,6 @@ export default function SalesDashboard() {
         if (!res.ok) throw new Error('Failed to fetch data');
         const apiData = await res.json();
         setData(apiData);
-
-        
       } catch (error) {
         console.error("Error fetching live data:", error);
       } finally {
@@ -127,7 +128,7 @@ export default function SalesDashboard() {
       }
     }
     fetchLiveData();
-  }, [dateRange]);
+  }, [startDateStr, endDateStr, isAdjustedView]);
 
   // Reset drill-down sub-states when closing or changing main target
   useEffect(() => {
@@ -345,11 +346,11 @@ export default function SalesDashboard() {
   const predictionUrl = useMemo(() => {
     let url = '/sales/prediction';
     const params = new URLSearchParams();
-    if (dateRange?.from) params.append('startDate', dateRange.from.toISOString().split('T')[0]);
-    if (dateRange?.to) params.append('endDate', dateRange.to.toISOString().split('T')[0]);
+    if (startDateStr) params.append('startDate', startDateStr);
+    if (endDateStr) params.append('endDate', endDateStr);
     if (params.toString()) url += '?' + params.toString();
     return url;
-  }, [dateRange]);
+  }, [startDateStr, endDateStr]);
 
   return (
     <div className="flex-1 space-y-6 pb-8 px-2 animate-in fade-in duration-700">
@@ -387,10 +388,6 @@ export default function SalesDashboard() {
             <Sparkles className="h-4 w-4 text-white animate-pulse" />
             AI Future Prediction
           </a>
-          
-          <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-lg shadow-sm border backdrop-blur-sm">
-              <DateRangePicker value={dateRange} onDateChange={setDateRange} />
-          </div>
         </div>
       </div>
 
@@ -411,7 +408,7 @@ export default function SalesDashboard() {
             <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center"><DollarSign className="h-4 w-4 text-blue-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.grossSales.value)}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis?.grossSales?.value ?? 0)}</div>
           </CardContent>
         </Card>
 
@@ -425,7 +422,7 @@ export default function SalesDashboard() {
             <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center"><TrendingUp className="h-4 w-4 text-emerald-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.netSales.value)}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis?.netSales?.value ?? 0)}</div>
           </CardContent>
         </Card>
 
@@ -439,7 +436,7 @@ export default function SalesDashboard() {
             <div className="h-8 w-8 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center"><TrendingDown className="h-4 w-4 text-rose-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.salesReturns.value)}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis?.salesReturns?.value ?? 0)}</div>
           </CardContent>
         </Card>
 
@@ -453,7 +450,7 @@ export default function SalesDashboard() {
             <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center"><AlertCircle className="h-4 w-4 text-amber-600" /></div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis.pendingOrders.value)}</div>
+            <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">{formatCurrency(kpis?.pendingOrders?.value ?? 0)}</div>
           </CardContent>
         </Card>
       </div>
@@ -469,7 +466,7 @@ export default function SalesDashboard() {
           </CardHeader>
           <CardContent className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.salesTrend} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
+              <AreaChart data={data?.salesTrend || []} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>

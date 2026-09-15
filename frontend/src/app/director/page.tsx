@@ -7,15 +7,14 @@ import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, 
 import { AlertTriangle, RefreshCw, Briefcase, TrendingUp, Shield, Database, Calendar as CalendarIcon, Download, DollarSign, Activity, CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { formatDateOnly } from "@/lib/utils";
+
 export default function DirectorPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const d = new Date();
-    const m = d.getMonth();
-    const fyStartYear = m < 3 ? d.getFullYear() - 1 : d.getFullYear();
-    return {
-      from: new Date(fyStartYear, 3, 1),
-      to: new Date(fyStartYear + 1, 2, 31)
-    };
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 30);
+    return { from, to };
   });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,38 +27,41 @@ export default function DirectorPage() {
       let url = '/api/universal-metrics?type=director';
       if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
       const res = await fetch(url);
-      const json = await res.json();
-      
       if (!res.ok) {
-        throw new Error(json.error || "Failed to fetch data");
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to fetch metrics');
       }
-      
-      setData(json.data);
-    } catch (err: any) {
-      setError(err.message);
+      const json = await res.json();
+      setData(json.data || json);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMetrics(); // fast Supabase load on mount
+    fetchMetrics();
   }, []);
+
+  const startDateStr = dateRange?.from ? formatDateOnly(dateRange.from) : "";
+  const endDateStr = dateRange?.to ? formatDateOnly(dateRange.to) : "";
 
   const isDateMounted = React.useRef(false);
   useEffect(() => {
     if (!isDateMounted.current) { isDateMounted.current = true; return; }
-    const sd = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
-    const ed = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : undefined;
-    fetchMetrics(sd, ed);
-  }, [dateRange]);
+    if (startDateStr && endDateStr) {
+      fetchMetrics(startDateStr, endDateStr);
+    }
+  }, [startDateStr, endDateStr]);
 
   if (isLoading) {
     return (
       <div className="p-8 space-y-4 animate-pulse bg-slate-50 min-h-screen">
         <div className="h-8 w-48 bg-slate-200 rounded mb-6"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-28 bg-slate-200 rounded-lg border border-slate-200"></div>)}
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <div key={i} className="h-28 bg-slate-200 rounded-lg border border-slate-200"></div>)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px] mt-4">
           <div className="bg-slate-200 rounded-lg border border-slate-200"></div>
@@ -110,7 +112,7 @@ export default function DirectorPage() {
   const workingCapital = data["Working Capital"] || 0;
   const receivables = data["Receivables"] || 0;
   const payables = data["Payables"] || 0;
-  
+
   const capStruct = data["Capital Structure"] || {};
   const totalEquity = capStruct["Total Equity"] || 0;
   const totalDebt = capStruct["Total Debt"] || 0;
@@ -131,7 +133,7 @@ export default function DirectorPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-[1600px] mx-auto bg-slate-50 min-h-screen font-sans">
-      
+
       {/* Top Action Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
         <div>
@@ -139,7 +141,6 @@ export default function DirectorPage() {
           <p className="text-xs font-medium text-slate-500 mt-0.5">Corporate Financial Overview • YTD</p>
         </div>
         <div className="flex items-center gap-2">
-          <DateRangePicker value={dateRange} onDateChange={setDateRange} />
           <button className="p-1.5 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
             <Download className="h-4 w-4" />
           </button>
@@ -148,7 +149,7 @@ export default function DirectorPage() {
 
       {/* KPI Cards Grid - Now 8 dense cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         {/* Total Revenue */}
         <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-28 relative">
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-600 rounded-l-lg"></div>
@@ -273,7 +274,7 @@ export default function DirectorPage() {
 
       {/* Main Charts Area */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        
+
         {/* Capital Structure */}
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col">
           <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
@@ -295,7 +296,7 @@ export default function DirectorPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(val: any, name: any, props: any) => [formatCurrency(props.payload.realValue), name]}
                     contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
                   />
@@ -306,7 +307,7 @@ export default function DirectorPage() {
                 <span className="text-sm font-bold text-slate-800">{formatShortCurrency(totalEquity + totalDebt)}</span>
               </div>
             </div>
-            
+
             <div className="w-full md:w-1/2 flex flex-col justify-center gap-3">
               {capPieData.map((item, i) => {
                 const pct = (totalEquity + totalDebt) > 0 ? ((item.value / (Math.abs(totalEquity) + Math.abs(totalDebt))) * 100).toFixed(1) : "0";
@@ -339,7 +340,7 @@ export default function DirectorPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={true} stroke="#cbd5e1" tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                 <YAxis width={60} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => formatShortCurrency(v)} />
-                <Tooltip 
+                <Tooltip
                   formatter={(val: any) => [formatCurrency(val), "Amount"]}
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
