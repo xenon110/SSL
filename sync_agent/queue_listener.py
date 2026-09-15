@@ -73,8 +73,20 @@ def process_queue():
     except Exception as e:
         log(f"Error checking queue: {e}")
 
+def cleanup_zombie_requests():
+    """If the script crashed previously, reset any 'processing' requests back to 'pending'."""
+    try:
+        # We don't have an exact timestamp of when it started processing, but resetting ALL 
+        # 'processing' requests on script startup is perfectly safe because this is the only worker.
+        res = sb.table("sync_requests").update({"status": "pending"}).eq("status", "processing").execute()
+        if res.data and len(res.data) > 0:
+            log(f"Cleaned up {len(res.data)} zombie requests (reset to pending).")
+    except Exception as e:
+        log(f"Error cleaning up zombie requests: {e}")
+
 if __name__ == "__main__":
     log("Started Tally Event-Driven Queue Listener")
+    cleanup_zombie_requests()
     log("Waiting for requests from Supabase...")
     
     start_time = time.time()
