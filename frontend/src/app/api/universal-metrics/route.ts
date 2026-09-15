@@ -44,24 +44,32 @@ export async function GET(request: Request) {
     const { data: outstandings } = await supabase
       .from('mv_party_outstandings')
       .select('*')
-      .ilike('company_name', `%${companySearchTerm}%`);
-      
     let totalAR = 0;
     let totalAP = 0;
     
     const arBuckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
     const apBuckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
-    
+
     (outstandings || []).forEach((b: any) => {
         const amt = Number(b.total_pending) || 0;
+        const b0_30 = Number(b.bucket_0_30) || 0;
+        const b31_60 = Number(b.bucket_31_60) || 0;
+        const b61_90 = Number(b.bucket_61_90) || 0;
+        const b90_plus = Number(b.bucket_90_plus) || 0;
+
         if (b.party_group === 'receivable') {
             totalAR += amt;
-            // simplified bucket logic since MV doesn't have buckets yet
-            arBuckets["0-30 Days"] += amt;
+            arBuckets["0-30 Days"] += (b0_30 || amt);
+            arBuckets["31-60 Days"] += b31_60;
+            arBuckets["61-90 Days"] += b61_90;
+            arBuckets["90+ Days"] += b90_plus;
         }
         if (b.party_group === 'payable') {
             totalAP += amt;
-            apBuckets["0-30 Days"] += amt;
+            apBuckets["0-30 Days"] += (b0_30 || (b31_60 || b61_90 || b90_plus ? 0 : amt));
+            apBuckets["31-60 Days"] += b31_60;
+            apBuckets["61-90 Days"] += b61_90;
+            apBuckets["90+ Days"] += b90_plus;
         }
     });
 
