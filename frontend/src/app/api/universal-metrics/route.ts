@@ -40,36 +40,35 @@ export async function GET(request: Request) {
     pnl = mData?.metrics_data || {};
 
 
-    // Fetch Outstandings (from mv_party_outstandings instead of legacy view)
+    // Fetch Outstandings from mv_party_outstandings for exact 60-day bucket match with Tally
     const { data: outstandings } = await supabase
       .from('mv_party_outstandings')
       .select('*')
+      .ilike('company_name', `%${companySearchTerm}%`);
+      
     let totalAR = 0;
     let totalAP = 0;
     
-    const arBuckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
-    const apBuckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
+    const arBuckets = { "< 60 Days": 0, "60-120 Days": 0, "120-180 Days": 0, "> 180 Days": 0 };
+    const apBuckets = { "< 60 Days": 0, "60-120 Days": 0, "120-180 Days": 0, "> 180 Days": 0 };
 
     (outstandings || []).forEach((b: any) => {
         const amt = Number(b.total_pending) || 0;
-        const b0_30 = Number(b.bucket_0_30) || 0;
-        const b31_60 = Number(b.bucket_31_60) || 0;
-        const b61_90 = Number(b.bucket_61_90) || 0;
-        const b90_plus = Number(b.bucket_90_plus) || 0;
+        const days = Number(b.oldest_bill_days) || 0;
 
         if (b.party_group === 'receivable') {
             totalAR += amt;
-            arBuckets["0-30 Days"] += (b0_30 || amt);
-            arBuckets["31-60 Days"] += b31_60;
-            arBuckets["61-90 Days"] += b61_90;
-            arBuckets["90+ Days"] += b90_plus;
+            if (days < 60) arBuckets["< 60 Days"] += amt;
+            else if (days < 120) arBuckets["60-120 Days"] += amt;
+            else if (days < 180) arBuckets["120-180 Days"] += amt;
+            else arBuckets["> 180 Days"] += amt;
         }
         if (b.party_group === 'payable') {
             totalAP += amt;
-            apBuckets["0-30 Days"] += (b0_30 || (b31_60 || b61_90 || b90_plus ? 0 : amt));
-            apBuckets["31-60 Days"] += b31_60;
-            apBuckets["61-90 Days"] += b61_90;
-            apBuckets["90+ Days"] += b90_plus;
+            if (days < 60) apBuckets["< 60 Days"] += amt;
+            else if (days < 120) apBuckets["60-120 Days"] += amt;
+            else if (days < 180) apBuckets["120-180 Days"] += amt;
+            else apBuckets["> 180 Days"] += amt;
         }
     });
 
@@ -136,20 +135,20 @@ export async function GET(request: Request) {
       case 'receivables':
         data = {
           "Total Outstanding Receivables": totalAR,
-          "0-30 Days": arBuckets["0-30 Days"],
-          "31-60 Days": arBuckets["31-60 Days"],
-          "61-90 Days": arBuckets["61-90 Days"],
-          "90+ Days": arBuckets["90+ Days"],
+          "< 60 Days": arBuckets["< 60 Days"],
+          "60-120 Days": arBuckets["60-120 Days"],
+          "120-180 Days": arBuckets["120-180 Days"],
+          "> 180 Days": arBuckets["> 180 Days"],
         };
         break;
         
       case 'payables':
         data = {
           "Outstanding Vendors": totalAP,
-          "Current (0-30)": apBuckets["0-30 Days"],
-          "31-60 Days": apBuckets["31-60 Days"],
-          "61-90 Days": apBuckets["61-90 Days"],
-          "> 90 Days": apBuckets["90+ Days"],
+          "< 60 Days": apBuckets["< 60 Days"],
+          "60-120 Days": apBuckets["60-120 Days"],
+          "120-180 Days": apBuckets["120-180 Days"],
+          "> 180 Days": apBuckets["> 180 Days"],
         };
         break;
         
