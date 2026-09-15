@@ -37,7 +37,7 @@ export default function LoginPage() {
         // Set the auth token cookie so our middleware lets us through
         document.cookie = `auth-token=${data.session.access_token}; path=/; max-age=86400`;
         document.cookie = `active-company=SMRIDHI%20SPONGE%20LIMITED%20-%20%28from%201-Apr-24%29%20-%20%28from%201-Apr-25%29; path=/; max-age=86400`;
-        router.push("/dashboard");
+        router.push("/executive");
       }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
