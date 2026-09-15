@@ -9,8 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Activity, TrendingUp, DollarSign, AlertCircle, PieChart as PieChartIcon, BarChart3, Users, Zap, Calendar as CalendarIcon } from "lucide-react";
+import { Activity, TrendingUp, DollarSign, AlertCircle, PieChart as PieChartIcon, BarChart3, Users, Zap, Calendar as CalendarIcon, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
@@ -349,49 +351,141 @@ export function GenericDashboardView({ title, data = {}, onDateChange, isLoading
         {/* Lists / Data Tables */}
         {lists.length > 0 && (
           <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-            {lists.map((list) => {
-              if (list.items.length === 0) return null;
-              const columns = Object.keys(list.items[0]);
-
-              return (
-                <Card key={list.key} className="col-span-1 border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl overflow-hidden transition-all hover:shadow-2xl">
-                  <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-800/50 pb-4">
-                    <CardTitle className="text-lg font-bold flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-indigo-500" />
-                      {formatKey(list.key)}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader className="bg-slate-50/80 dark:bg-slate-800/80">
-                          <TableRow>
-                            {columns.map((col) => (
-                              <TableHead key={col} className="text-xs font-semibold text-slate-500">{formatKey(col)}</TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {list.items.map((item, idx) => (
-                            <TableRow key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                              {columns.map((col) => (
-                                <TableCell key={col} className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                  {formatValue(item[col])}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {lists.map((list) => (
+              <DashboardListTable 
+                key={list.key} 
+                title={list.key} 
+                items={list.items} 
+                formatKey={formatKey} 
+                formatValue={formatValue} 
+              />
+            ))}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function DashboardListTable({ title, items, formatKey, formatValue }: { title: string; items: any[]; formatKey: (s: string) => string; formatValue: (v: any) => any }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  if (!items || items.length === 0) return null;
+  const columns = Object.keys(items[0]);
+
+  // Filter items
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    const q = searchQuery.toLowerCase().trim();
+    return items.filter((item) =>
+      columns.some((col) => {
+        const val = item[col];
+        return val !== null && val !== undefined && String(val).toLowerCase().includes(q);
+      })
+    );
+  }, [items, searchQuery, columns]);
+
+  // Reset page on search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const totalPages = Math.ceil(filteredItems.length / pageSize) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, currentPage, pageSize]);
+
+  return (
+    <Card className="col-span-1 border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl overflow-hidden transition-all hover:shadow-2xl">
+      <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-800/50 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <CardTitle className="text-lg font-bold flex items-center gap-2">
+          <Zap className="h-5 w-5 text-indigo-500" />
+          {formatKey(title)}
+        </CardTitle>
+
+        {/* Search Bar */}
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            type="text"
+            placeholder={`Search ${formatKey(title)}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-4 py-1.5 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-50/80 dark:bg-slate-800/80">
+              <TableRow>
+                {columns.map((col) => (
+                  <TableHead key={col} className="text-xs font-semibold text-slate-500">{formatKey(col)}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedItems.map((item, idx) => (
+                <TableRow key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  {columns.map((col) => (
+                    <TableCell key={col} className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {formatValue(item[col])}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {paginatedItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center text-slate-400 text-sm">
+                    No matching records found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination Bar */}
+        {filteredItems.length > 0 && (
+          <div className="px-4 py-3 border-t bg-slate-50/40 dark:bg-slate-800/40 flex items-center justify-between text-xs text-slate-500">
+            <div>
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                {Math.min(currentPage * pageSize, filteredItems.length)}
+              </span>{" "}
+              of <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredItems.length}</span> entries
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 px-2 text-xs"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              </Button>
+              <span className="font-medium text-slate-600 dark:text-slate-400">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 px-2 text-xs"
+              >
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

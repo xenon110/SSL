@@ -321,14 +321,21 @@ export async function GET(request: Request) {
                     defectiveChart[row.supplier_name] = ret;
                 }
             });
-            
+
             const sortedDefective = Object.entries(defectiveChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
             let finalDefective: any = {};
             sortedDefective.forEach(([k, v]) => finalDefective[k] = v);
-            
+
             const sortedSpend = Object.entries(spendChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
             let finalSpend: any = {};
             sortedSpend.forEach(([k, v]) => finalSpend[k] = v);
+
+            const { data: vendorList } = await supabase
+              .from('ledgers')
+              .select('name, parent_group, closing_balance')
+              .eq('company_id', companyId)
+              .ilike('parent_group', '%Creditor%')
+              .order('name', { ascending: true });
 
             data = { 
                 "Total Owed (Payables)": totalAP, 
@@ -336,7 +343,12 @@ export async function GET(request: Request) {
                 "Active Vendors": totalVendors,
                 "Top 5 Creditors (Live)": finalChart,
                 "Top 5 By Spend (Concentration Risk)": finalSpend,
-                "Top Defective Suppliers (By Return Value)": Object.keys(finalDefective).length > 0 ? finalDefective : { "No Returns Logged": 0 }
+                "Top Defective Suppliers (By Return Value)": Object.keys(finalDefective).length > 0 ? finalDefective : { "No Returns Logged": 0 },
+                "Vendor Directory": (vendorList || []).map((v: any) => ({
+                    "Vendor Name": v.name,
+                    "Group": v.parent_group,
+                    "Current Balance": v.closing_balance
+                }))
             };
         }
         break;
