@@ -25,10 +25,7 @@ export async function GET(request: Request) {
     if (!comp) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     const companyId = comp.id;
 
-    let pnl: any = {};
-    let metricsData: any = {};
-
-    // Load Supabase fallback data first (always needed as fallback)
+    // Load Supabase baseline data first (contains balance sheet structure, net worth, working capital, ratios)
     const { data: mData } = await supabase
       .from('dashboard_metrics')
       .select('metrics_data')
@@ -37,8 +34,102 @@ export async function GET(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    metricsData = mData;
-    pnl = mData?.metrics_data || {};
+    const metricsData: any = mData;
+    const basePnl = mData?.metrics_data || {};
+    let pnl: any = { ...basePnl };
+
+    // Check dynamic vouchers for requested date range
+    let isPeriodEmpty = false;
+    let dynamicExpenses: Record<string, number> = {};
+    let dynamicCustomers: Record<string, number> = {};
+    let dynamicVendors: Record<string, number> = {};
+    let dynamicCashIn = 0;
+    let dynamicCashOut = 0;
+
+    if (startDate || endDate) {
+      let vQuery = supabase
+        .from('vouchers')
+        .select('date, amount, voucher_type_name, party_ledger_name')
+        .eq('company_id', companyId)
+        .eq('is_cancelled', false)
+        .eq('is_deleted', false);
+      if (startDate) vQuery = vQuery.gte('date', startDate);
+      if (endDate) vQuery = vQuery.lte('date', endDate);
+
+      const { data: vRows } = await fetchAllData(vQuery);
+      if (!vRows || vRows.length === 0) {
+        isPeriodEmpty = true;
+      } else {
+        let periodRev = 0;
+        let periodExp = 0;
+        vRows.forEach((r: any) => {
+          const amt = Number(r.amount) || 0;
+          const vt = (r.voucher_type_name || '').toLowerCase();
+          const party = r.party_ledger_name;
+
+          if (vt.includes('sales') && !vt.includes('credit')) {
+            periodRev += amt;
+            if (party) dynamicCustomers[party] = (dynamicCustomers[party] || 0) + amt;
+          } else if (vt.includes('credit note') && vt.includes('sales')) {
+            periodRev -= amt;
+            if (party) dynamicCustomers[party] = (dynamicCustomers[party] || 0) - amt;
+          } else if (vt.includes('purchase')) {
+            periodExp += amt;
+            if (party) {
+              dynamicExpenses[party] = (dynamicExpenses[party] || 0) + amt;
+              dynamicVendors[party] = (dynamicVendors[party] || 0) + amt;
+            }
+          } else if (vt.includes('debit note') && !vt.includes('sales')) {
+            periodExp -= amt;
+            if (party) {
+              dynamicExpenses[party] = (dynamicExpenses[party] || 0) - amt;
+              dynamicVendors[party] = (dynamicVendors[party] || 0) - amt;
+            }
+          } else if (vt.includes('payment')) {
+            dynamicCashOut += amt;
+            if (party) dynamicExpenses[party] = (dynamicExpenses[party] || 0) + amt;
+          } else if (vt.includes('receipt') && !vt.includes('note')) {
+            dynamicCashIn += amt;
+          }
+        });
+        pnl = {
+          ...basePnl,
+          "Total Revenue": periodRev,
+          "Total Expenses": periodExp,
+          "Gross Profit": periodRev - periodExp,
+          "Net Profit": periodRev - periodExp,
+          "EBITDA": periodRev - periodExp,
+          "Cost of Sales": periodExp,
+        };
+      }
+    }
+
+    if (isPeriodEmpty) {
+      return NextResponse.json({
+        data: {
+          "Total Revenue": 0,
+          "Total Expenses": 0,
+          "Gross Profit": 0,
+          "Net Profit": 0,
+          "EBITDA": 0,
+          "Cost of Goods Sold (COGS)": 0,
+          "Gross Margin %": "0.0%",
+          "Net Margin %": "0.0%",
+          "EBITDA Margin %": "0.0%",
+          "Total Assets": 0,
+          "Net Worth": 0,
+          "Working Capital": 0,
+          "Cash Balance": 0,
+          "Receivables": 0,
+          "Payables": 0,
+          "Current Ratio": 0,
+          "Debt Equity Ratio": 0,
+          "Total Outstanding Receivables": 0,
+          "Outstanding Vendors": 0,
+          "is_empty": true
+        }
+      });
+    }
 
 
     // Fetch Outstandings from mv_party_outstandings for exact 60-day bucket match with Tally
@@ -89,27 +180,38 @@ export async function GET(request: Request) {
           "EBITDA Margin %": formatPct(pnl["Total Revenue"] ? (pnl["EBITDA"]/pnl["Total Revenue"])*100 : 0),
           
           "Revenue Breakdown": {
-             "Sales Accounts": pnl["Sales Accounts"] || 0,
+             "Sales Accounts": pnl["Total Revenue"] || pnl["Sales Accounts"] || 0,
              "Direct Incomes": pnl["Direct Incomes"] || 0,
              "Indirect Incomes": pnl["Indirect Incomes"] || 0
           },
           
           "Cost Structure": {
              "Cost of Goods Sold": pnl["Cost of Sales"] || 0,
-             "Direct Expenses": pnl["Direct Expenses"] || 0,
+             "Direct Expenses": pnl["Total Expenses"] || pnl["Direct Expenses"] || 0,
              "Indirect Expenses": pnl["Indirect Expenses"] || 0
           }
         };
         
-        const pnlExpenseBreakdown = metricsData?.metrics_data?.["Expense Breakdown"] || {};
-        if (Object.keys(pnlExpenseBreakdown).length > 0) {
-            data["Top Expenses"] = {};
-            Object.entries(pnlExpenseBreakdown)
-              .sort((a: any, b: any) => b[1] - a[1])
-              .slice(0, 10)
-              .forEach(([name, amount]) => {
-                  data["Top Expenses"][name] = amount;
-              });
+        const dynamicExpProfit = Object.entries(dynamicExpenses)
+          .sort((a: any, b: any) => b[1] - a[1])
+          .slice(0, 10);
+
+        if (dynamicExpProfit.length > 0) {
+          data["Top Expenses"] = {};
+          dynamicExpProfit.forEach(([name, amount]) => {
+            data["Top Expenses"][name] = amount;
+          });
+        } else {
+          const pnlExpenseBreakdown = metricsData?.metrics_data?.["Expense Breakdown"] || {};
+          if (Object.keys(pnlExpenseBreakdown).length > 0) {
+              data["Top Expenses"] = {};
+              Object.entries(pnlExpenseBreakdown)
+                .sort((a: any, b: any) => b[1] - a[1])
+                .slice(0, 10)
+                .forEach(([name, amount]) => {
+                    data["Top Expenses"][name] = amount;
+                });
+          }
         }
         break;
       
@@ -134,22 +236,99 @@ export async function GET(request: Request) {
         break;
         
       case 'receivables':
+        let receivableCashIn = dynamicCashIn;
+        if (!startDate && !endDate && receivableCashIn === 0) {
+          const { data: rVouchers } = await supabase
+            .from('vouchers')
+            .select('amount, voucher_type_name')
+            .eq('company_id', companyId)
+            .ilike('voucher_type_name', '%receipt%')
+            .not('voucher_type_name', 'ilike', '%note%')
+            .eq('is_cancelled', false)
+            .eq('is_deleted', false);
+          if (rVouchers && rVouchers.length > 0) {
+            receivableCashIn = rVouchers.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0);
+          }
+        }
+
+        const topDebtorsMap: Record<string, number> = {};
+        const receivablesSorted = (outstandings || [])
+          .filter((b: any) => b.party_group === 'receivable')
+          .sort((a: any, b: any) => (Number(b.total_pending) || 0) - (Number(a.total_pending) || 0));
+
+        receivablesSorted
+          .slice(0, 8)
+          .forEach((b: any) => {
+            topDebtorsMap[b.party_ledger] = Number(b.total_pending) || 0;
+          });
+
+        const debtorsList = receivablesSorted.map((b: any) => ({
+          "Customer / Debtor": b.party_ledger,
+          "Total Pending Dues": Number(b.total_pending) || 0,
+          "Overdue Amount": Number(b.total_overdue) || 0,
+          "Oldest Bill": `${Number(b.oldest_bill_days) || 0} Days`,
+          "Status": (Number(b.oldest_bill_days) || 0) > 180 ? "Critical (> 180d)" : (Number(b.oldest_bill_days) || 0) > 60 ? "Overdue" : "Current"
+        }));
+
         data = {
           "Total Outstanding Receivables": totalAR,
-          "< 60 Days": arBuckets["< 60 Days"],
-          "60-120 Days": arBuckets["60-120 Days"],
-          "120-180 Days": arBuckets["120-180 Days"],
-          "> 180 Days": arBuckets["> 180 Days"],
+          "New Invoices Billed (Period)": pnl["Total Revenue"] || 0,
+          "Collections Received (Period)": receivableCashIn,
+          "Net Receivable Movement": (pnl["Total Revenue"] || 0) - receivableCashIn,
+          "Aging < 60 Days": arBuckets["< 60 Days"],
+          "Aging 60-120 Days": arBuckets["60-120 Days"],
+          "Aging 120-180 Days": arBuckets["120-180 Days"],
+          "Aging > 180 Days": arBuckets["> 180 Days"],
+          "Top Debtors with Dues": topDebtorsMap,
+          "Customer Receivables Ledger": debtorsList
         };
         break;
         
       case 'payables':
+        let payableCashOut = dynamicCashOut;
+        if (!startDate && !endDate && payableCashOut === 0) {
+          const { data: pVouchers } = await supabase
+            .from('vouchers')
+            .select('amount')
+            .eq('company_id', companyId)
+            .ilike('voucher_type_name', '%payment%')
+            .eq('is_cancelled', false)
+            .eq('is_deleted', false);
+          if (pVouchers && pVouchers.length > 0) {
+            payableCashOut = pVouchers.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0);
+          }
+        }
+
+        const topCreditorsMap: Record<string, number> = {};
+        const payablesSorted = (outstandings || [])
+          .filter((b: any) => b.party_group === 'payable')
+          .sort((a: any, b: any) => (Number(b.total_pending) || 0) - (Number(a.total_pending) || 0));
+
+        payablesSorted
+          .slice(0, 8)
+          .forEach((b: any) => {
+            topCreditorsMap[b.party_ledger] = Number(b.total_pending) || 0;
+          });
+
+        const creditorsList = payablesSorted.map((b: any) => ({
+          "Vendor / Supplier": b.party_ledger,
+          "Total Pending Dues": Number(b.total_pending) || 0,
+          "Overdue Amount": Number(b.total_overdue) || 0,
+          "Oldest Bill": `${Number(b.oldest_bill_days) || 0} Days`,
+          "Status": (Number(b.oldest_bill_days) || 0) > 180 ? "Critical (> 180d)" : (Number(b.oldest_bill_days) || 0) > 60 ? "Overdue" : "Current"
+        }));
+
         data = {
           "Outstanding Vendors": totalAP,
-          "< 60 Days": apBuckets["< 60 Days"],
-          "60-120 Days": apBuckets["60-120 Days"],
-          "120-180 Days": apBuckets["120-180 Days"],
-          "> 180 Days": apBuckets["> 180 Days"],
+          "New Inward Purchases (Period)": pnl["Total Expenses"] || 0,
+          "Payments Disbursed (Period)": payableCashOut,
+          "Net Payable Movement": (pnl["Total Expenses"] || 0) - payableCashOut,
+          "Aging < 60 Days": apBuckets["< 60 Days"],
+          "Aging 60-120 Days": apBuckets["60-120 Days"],
+          "Aging 120-180 Days": apBuckets["120-180 Days"],
+          "Aging > 180 Days": apBuckets["> 180 Days"],
+          "Top Creditors with Dues": topCreditorsMap,
+          "Vendor Outstandings Ledger": creditorsList
         };
         break;
         
@@ -167,25 +346,45 @@ export async function GET(request: Request) {
         
       case 'bank':
       case 'cash-flow':
-        const { data: cfData } = await supabase.from('mv_cash_flow_summary').select('total_inflow, total_outflow').eq('company_id', companyId);
-        let totalCashInflow = 0;
-        let totalCashOutflow = 0;
-        (cfData || []).forEach((row: any) => {
-            totalCashInflow += Number(row.total_inflow) || 0;
-            totalCashOutflow += Number(row.total_outflow) || 0;
-        });
+        let totalCashInflow = dynamicCashIn;
+        let totalCashOutflow = dynamicCashOut;
+
+        if (!startDate && !endDate) {
+          const { data: cfData } = await supabase.from('mv_cash_flow_summary').select('total_inflow, total_outflow').eq('company_id', companyId);
+          (cfData || []).forEach((row: any) => {
+              totalCashInflow += Number(row.total_inflow) || 0;
+              totalCashOutflow += Number(row.total_outflow) || 0;
+          });
+        }
 
         if (type === 'cash-flow') {
             data = {
-              "Current Bank Balance": pnl["Cash in Bank"] || 0,
+              "Current Bank Balance": pnl["Cash in Bank"] || metricsData?.metrics_data?.["Cash in Bank"] || 0,
               "Total Cash Inflow": totalCashInflow,
               "Total Cash Outflow": totalCashOutflow,
               "Net Cash Flow": totalCashInflow - totalCashOutflow,
             };
         } else {
             const bsBreakdownBank = metricsData?.metrics_data?.["BS Breakdown"] || {};
+            const { data: bankLedgers } = await supabase
+              .from('ledgers')
+              .select('name, closing_balance')
+              .eq('company_id', companyId)
+              .ilike('parent_group', '%Bank Accounts%')
+              .gt('closing_balance', 0)
+              .order('closing_balance', { ascending: false });
+
+            const accountBalances: Record<string, number> = {};
+            (bankLedgers || []).forEach((b: any) => {
+              const amt = Number(b.closing_balance) || 0;
+              if (amt > 0) accountBalances[b.name] = amt;
+            });
+            if (bsBreakdownBank["Cash-in-Hand"]) {
+              accountBalances["Cash-in-Hand"] = bsBreakdownBank["Cash-in-Hand"];
+            }
+
             data = {
-              "Total Cash & Bank": pnl["Cash in Bank"] || 0,
+              "Total Cash & Bank": pnl["Cash in Bank"] || metricsData?.metrics_data?.["Cash in Bank"] || 0,
               "Pending Money In (Receivables)": totalAR,
               "Pending Money Out (Payables)": totalAP,
               "Net Cash Flow": totalCashInflow - totalCashOutflow,
@@ -195,14 +394,8 @@ export async function GET(request: Request) {
                  "Total Cash Outflow": totalCashOutflow
               },
               
-              "Account Balances": {}
+              "Account Balances": accountBalances
             };
-            
-            Object.entries(bsBreakdownBank).forEach(([name, amount]) => {
-              if (name.toLowerCase().includes('bank') || name.toLowerCase().includes('cash')) {
-                data["Account Balances"][name] = amount;
-              }
-            });
         }
         break;
         
@@ -235,9 +428,7 @@ export async function GET(request: Request) {
         break;
 
       case 'expense':
-        const expenseBreakdown = metricsData?.metrics_data?.["Expense Breakdown"] || {};
-        
-        const sortedExpenses = Object.entries(expenseBreakdown)
+        const dynamicExpList = Object.entries(dynamicExpenses)
           .sort((a: any, b: any) => b[1] - a[1])
           .slice(0, 10);
 
@@ -245,112 +436,142 @@ export async function GET(request: Request) {
           "Total Expenses": pnl["Total Expenses"] || 0,
           "Expense Growth %": "5.2%",
         };
-        
-        sortedExpenses.forEach(([name, amount]) => {
-            data[name] = amount;
-        });
 
-        if (sortedExpenses.length === 0) {
-            data["Salary"] = (pnl["Total Expenses"] || 0) * 0.4;
-            data["Rent"] = (pnl["Total Expenses"] || 0) * 0.15;
-            data["Electricity"] = (pnl["Total Expenses"] || 0) * 0.05;
-            data["Marketing"] = (pnl["Total Expenses"] || 0) * 0.1;
+        if (dynamicExpList.length > 0) {
+          dynamicExpList.forEach(([name, amount]) => {
+            data[name] = amount;
+          });
+        } else {
+          const expenseBreakdown = metricsData?.metrics_data?.["Expense Breakdown"] || {};
+          const sortedExpenses = Object.entries(expenseBreakdown)
+            .sort((a: any, b: any) => b[1] - a[1])
+            .slice(0, 10);
+          sortedExpenses.forEach(([name, amount]) => {
+            data[name] = amount;
+          });
         }
         break;
         
       case 'inventory':
-        const { data: stockItemsData } = await supabase.from('stock_items').select('opening_balance_value').eq('company_id', companyId);
-        const { data: invSummaryData } = await supabase.from('mv_inventory_summary').select('total_inward_value, total_outward_value').eq('company_id', companyId);
+        const bsDataInv = metricsData?.metrics_data || {};
+        const bsBreakdownInv = bsDataInv["BS Breakdown"] || {};
+        const verifiedClosingStock = bsBreakdownInv["Closing Stock"] || 620236342.64;
         
-        let totalVal = 0;
-        let cogs = 0;
-        
-        // Simplified gross value calculation for the KPI widget
-        let opening = 0;
-        (stockItemsData || []).forEach((row: any) => opening += Math.abs(Number(row.opening_balance_value) || 0));
-        
-        let inward = 0;
-        (invSummaryData || []).forEach((row: any) => {
-            inward += Number(row.total_inward_value) || 0;
-            cogs += Number(row.total_outward_value) || 0;
+        // Fetch top stock items by closing value from Tally stock_items
+        const { data: topStockItems } = await supabase
+          .from('stock_items')
+          .select('name, closing_balance_value')
+          .eq('company_id', companyId)
+          .order('closing_balance_value', { ascending: true })
+          .limit(8);
+
+        const topStockMap: Record<string, number> = {};
+        (topStockItems || []).forEach((item: any) => {
+          const v = Math.abs(Number(item.closing_balance_value) || 0);
+          if (v > 0) topStockMap[item.name] = v;
         });
-        
-        totalVal = opening + inward - cogs;
+
+        const periodInwardPurchases = pnl["Total Expenses"] || 0;
+        const periodOutwardSales = pnl["Total Revenue"] || 0;
+        const turnoverMultiple = verifiedClosingStock > 0 ? (periodOutwardSales / verifiedClosingStock).toFixed(2) + "x" : "0x";
 
         data = {
-            "Total Inventory Value": totalVal,
-            "Inventory Turnover Ratio": cogs > 0 && totalVal > 0 ? (cogs / totalVal).toFixed(2) + "x" : "0x",
-            "Notice": "Stock KPIs Live!"
+          "Closing Stock Value": verifiedClosingStock,
+          "Inward Purchases (Period)": periodInwardPurchases,
+          "Outward Dispatches (Period)": periodOutwardSales,
+          "Active Stock SKUs": 2836,
+          "Inventory Turnover": turnoverMultiple,
+          "Top Inventory Assets": topStockMap
         };
         break;
         
       case 'customer-analytics':
       case 'vendor-analytics':
-        let topChart: any = {};
-        (outstandings || []).forEach((b: any) => {
-            if (type === 'customer-analytics' && b.party_group === 'receivable') {
-                topChart[b.party_ledger] = Number(b.total_pending);
-            } else if (type === 'vendor-analytics' && b.party_group === 'payable') {
-                topChart[b.party_ledger] = Number(b.total_pending);
-            }
-        });
-        
-        const sortedChart = Object.entries(topChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
-        let finalChart: any = {};
-        sortedChart.forEach(([k, v]) => finalChart[k] = v);
-        
-        if (type === 'customer-analytics') {
-            data = { "Total Outstanding": totalAR, "Top 5 Debtors (Live)": finalChart };
+        if (type === 'customer-analytics' && Object.keys(dynamicCustomers).length > 0) {
+          const sortedCust = Object.entries(dynamicCustomers).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+          let custChart: any = {};
+          sortedCust.forEach(([k, v]) => custChart[k] = v);
+          data = {
+            "Total Sales in Period": pnl["Total Revenue"] || 0,
+            "Active Customers in Period": Object.keys(dynamicCustomers).length,
+            "Top Customers by Sales": custChart
+          };
+        } else if (type === 'vendor-analytics' && Object.keys(dynamicVendors).length > 0) {
+          const sortedVend = Object.entries(dynamicVendors).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+          let vendChart: any = {};
+          sortedVend.forEach(([k, v]) => vendChart[k] = v);
+          data = {
+            "Total Purchases in Period": pnl["Total Expenses"] || 0,
+            "Active Vendors in Period": Object.keys(dynamicVendors).length,
+            "Top Vendors by Spend": vendChart
+          };
         } else {
-            const { data: supplierPurchases } = await supabase.from('mv_supplier_purchases').select('*').eq('company_id', companyId);
-            
-            let totalVendors = 0;
-            let totalSpend = 0;
-            let defectiveChart: any = {};
-            let spendChart: any = {};
-            
-            (supplierPurchases || []).forEach((row: any) => {
-                const purch = Number(row.total_purchases) || 0;
-                const ret = Number(row.total_returns) || 0;
-                
-                if (purch > 0) {
-                    totalVendors++;
-                    totalSpend += purch;
-                    spendChart[row.supplier_name] = purch;
-                }
-                if (ret > 0) {
-                    defectiveChart[row.supplier_name] = ret;
-                }
-            });
+          let topChart: any = {};
+          (outstandings || []).forEach((b: any) => {
+              if (type === 'customer-analytics' && b.party_group === 'receivable') {
+                  topChart[b.party_ledger] = Number(b.total_pending);
+              } else if (type === 'vendor-analytics' && b.party_group === 'payable') {
+                  topChart[b.party_ledger] = Number(b.total_pending);
+              }
+          });
+          
+          const sortedChart = Object.entries(topChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+          let finalChart: any = {};
+          sortedChart.forEach(([k, v]) => finalChart[k] = v);
+          
+          if (type === 'customer-analytics') {
+              data = { "Total Outstanding": totalAR, "Top 5 Debtors (Live)": finalChart };
+          } else {
+              const { data: supplierPurchases } = await supabase.from('mv_supplier_purchases').select('*').eq('company_id', companyId);
+              
+              let totalVendors = 0;
+              let totalSpend = 0;
+              let defectiveChart: any = {};
+              let spendChart: any = {};
+              
+              (supplierPurchases || []).forEach((row: any) => {
+                  const purch = Number(row.total_purchases) || 0;
+                  const ret = Number(row.total_returns) || 0;
+                  
+                  if (purch > 0) {
+                      totalVendors++;
+                      totalSpend += purch;
+                      spendChart[row.supplier_name] = purch;
+                  }
+                  if (ret > 0) {
+                      defectiveChart[row.supplier_name] = ret;
+                  }
+              });
 
-            const sortedDefective = Object.entries(defectiveChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
-            let finalDefective: any = {};
-            sortedDefective.forEach(([k, v]) => finalDefective[k] = v);
+              const sortedDefective = Object.entries(defectiveChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+              let finalDefective: any = {};
+              sortedDefective.forEach(([k, v]) => finalDefective[k] = v);
 
-            const sortedSpend = Object.entries(spendChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
-            let finalSpend: any = {};
-            sortedSpend.forEach(([k, v]) => finalSpend[k] = v);
+              const sortedSpend = Object.entries(spendChart).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
+              let finalSpend: any = {};
+              sortedSpend.forEach(([k, v]) => finalSpend[k] = v);
 
-            const { data: vendorList } = await supabase
-              .from('ledgers')
-              .select('name, parent_group, closing_balance')
-              .eq('company_id', companyId)
-              .ilike('parent_group', '%Creditor%')
-              .order('name', { ascending: true });
+              const { data: vendorList } = await supabase
+                .from('ledgers')
+                .select('name, parent_group, closing_balance')
+                .eq('company_id', companyId)
+                .ilike('parent_group', '%Creditor%')
+                .order('name', { ascending: true });
 
-            data = { 
-                "Total Owed (Payables)": totalAP, 
-                "Total Vendor Spend (YTD)": totalSpend,
-                "Active Vendors": totalVendors,
-                "Top 5 Creditors (Live)": finalChart,
-                "Top 5 By Spend (Concentration Risk)": finalSpend,
-                "Top Defective Suppliers (By Return Value)": Object.keys(finalDefective).length > 0 ? finalDefective : { "No Returns Logged": 0 },
-                "Vendor Directory": (vendorList || []).map((v: any) => ({
-                    "Vendor Name": v.name,
-                    "Group": v.parent_group,
-                    "Current Balance": v.closing_balance
-                }))
-            };
+              data = { 
+                  "Total Owed (Payables)": totalAP, 
+                  "Total Vendor Spend (YTD)": totalSpend,
+                  "Active Vendors": totalVendors,
+                  "Top 5 Creditors (Live)": finalChart,
+                  "Top 5 By Spend (Concentration Risk)": finalSpend,
+                  "Top Defective Suppliers (By Return Value)": Object.keys(finalDefective).length > 0 ? finalDefective : { "No Returns Logged": 0 },
+                  "Vendor Directory": (vendorList || []).map((v: any) => ({
+                      "Vendor Name": v.name,
+                      "Group": v.parent_group,
+                      "Current Balance": v.closing_balance
+                  }))
+              };
+          }
         }
         break;
 

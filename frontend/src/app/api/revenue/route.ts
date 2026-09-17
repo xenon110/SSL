@@ -8,85 +8,119 @@ export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const activeCompany = cookieStore.get('active-company')?.value || 'SMRIDHI SPONGE LIMITED - (from 1-Apr-24) - (from 1-Apr-25)';
-    
+
     const decodedName = decodeURIComponent(activeCompany);
     const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
-    
+
     if (!comp) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    // Fetch highly aggregated data from Materialized Views instead of raw vouchers
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    if (startDate || endDate) {
+      let vQuery = supabase
+        .from('vouchers')
+        .select('date, amount, voucher_type_name, party_ledger_name')
+        .eq('company_id', comp.id)
+        .eq('is_cancelled', false)
+        .eq('is_deleted', false)
+        .ilike('voucher_type_name', '%sales%');
+
+      if (startDate) vQuery = vQuery.gte('date', startDate);
+      if (endDate) vQuery = vQuery.lte('date', endDate);
+
+      const { data: periodSales } = await fetchAllData(vQuery);
+
+      if (!periodSales || periodSales.length === 0) {
+        return NextResponse.json({
+          data: {
+            "Total Revenue (Period)": 0,
+            "Number of Sales": 0,
+            "Average Invoice Value": 0,
+            "Unique Customers": 0,
+            "Repeat Customer %": "0.0%",
+            "Revenue Growth %": "0.0%",
+            "is_empty": true
+          }
+        });
+      }
+
+      let periodRevenue = 0;
+      const customers: string[] = [];
+      const customerSalesMap: Record<string, number> = {};
+
+      periodSales.forEach((r: any) => {
+        const amt = Number(r.amount) || 0;
+        periodRevenue += amt;
+        if (r.party_ledger_name) {
+          customers.push(r.party_ledger_name);
+          customerSalesMap[r.party_ledger_name] = (customerSalesMap[r.party_ledger_name] || 0) + amt;
+        }
+      });
+
+      const customerCountMap: Record<string, number> = {};
+      customers.forEach(c => {
+        customerCountMap[c] = (customerCountMap[c] || 0) + 1;
+      });
+
+      const uniqueCustomers = Object.keys(customerCountMap).length;
+      const repeatCustomers = Object.values(customerCountMap).filter(cnt => cnt > 1).length;
+      const repeatCustomerPercent = uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0;
+      const avgInvoice = periodSales.length > 0 ? periodRevenue / periodSales.length : 0;
+
+      const sortedCustomers = Object.entries(customerSalesMap).sort((a, b) => b[1] - a[1]);
+      const topCustomer = sortedCustomers[0] ? sortedCustomers[0][0] : "N/A";
+      const topCustomerSales = sortedCustomers[0] ? sortedCustomers[0][1] : 0;
+
+      return NextResponse.json({
+        data: {
+          "Total Revenue (Period)": periodRevenue,
+          "Number of Sales": periodSales.length,
+          "Average Invoice Value": avgInvoice,
+          "Unique Customers": uniqueCustomers,
+          "Repeat Customer %": `${repeatCustomerPercent.toFixed(1)}%`,
+          "Top Customer Sales": topCustomerSales,
+          "Top Customer": topCustomer,
+          "is_empty": false
+        }
+      });
+    }
+
+    // Default lifetime overview
     const { data: dailySales } = await fetchAllData(
-        supabase.from('mv_daily_sales').select('date, total_sales, voucher_count').eq('company_id', comp.id)
+      supabase.from('mv_daily_sales').select('date, total_sales, voucher_count').eq('company_id', comp.id)
     );
 
     const { data: customerSales } = await fetchAllData(
-        supabase.from('mv_customer_sales').select('tx_count').eq('company_id', comp.id)
+      supabase.from('mv_customer_sales').select('tx_count').eq('company_id', comp.id)
     );
 
-    let revenueToday = 0;
-    let revenueThisMonth = 0;
-    let revenueLastMonth = 0;
-    let revenueThisQuarter = 0;
-    let revenueThisYear = 0;
     let totalRevenue = 0;
     let numberOfSales = 0;
 
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const currentQuarter = Math.floor(currentMonth / 3);
-    const currentYearStr = currentYear.toString();
-    const currentMonthStr = now.toISOString().slice(0, 7);
-    const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-    const lastMonthStr = lastMonthDate.toISOString().slice(0, 7);
-
     (dailySales || []).forEach((row: any) => {
-        const d = row.date;
-        const amt = Number(row.total_sales) || 0;
-        const count = Number(row.voucher_count) || 0;
-
-        totalRevenue += amt;
-        numberOfSales += count;
-
-        if (d === todayStr) revenueToday += amt;
-        if (d.startsWith(currentMonthStr)) revenueThisMonth += amt;
-        if (d.startsWith(lastMonthStr)) revenueLastMonth += amt;
-        if (d.startsWith(currentYearStr)) revenueThisYear += amt;
-        
-        const vDate = new Date(d);
-        if (vDate.getFullYear() === currentYear && Math.floor(vDate.getMonth() / 3) === currentQuarter) {
-            revenueThisQuarter += amt;
-        }
+      totalRevenue += Number(row.total_sales) || 0;
+      numberOfSales += Number(row.voucher_count) || 0;
     });
 
     const averageInvoiceValue = numberOfSales > 0 ? (totalRevenue / numberOfSales) : 0;
-    
-    let revenueGrowth = 0;
-    if (revenueLastMonth > 0) {
-      revenueGrowth = ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100;
-    }
 
     let uniqueCustomers = 0;
     let repeatCustomers = 0;
     (customerSales || []).forEach((c: any) => {
-        uniqueCustomers++;
-        if (Number(c.tx_count) > 1) repeatCustomers++;
+      uniqueCustomers++;
+      if (Number(c.tx_count) > 1) repeatCustomers++;
     });
     const repeatCustomerPercent = uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0;
 
     return NextResponse.json({
       data: {
-        "Revenue Today": revenueToday,
-        "Revenue This Month": revenueThisMonth,
-        "Revenue Last Month": revenueLastMonth,
-        "Revenue This Quarter": revenueThisQuarter,
-        "Revenue This Year": revenueThisYear,
+        "Total Revenue": totalRevenue,
         "Average Invoice Value": averageInvoiceValue,
         "Number of Sales": numberOfSales,
-        "Revenue Growth %": `${revenueGrowth > 0 ? '+' : ''}${revenueGrowth.toFixed(1)}%`,
         "Repeat Customer %": `${repeatCustomerPercent.toFixed(1)}%`,
       }
     });

@@ -25,11 +25,31 @@ export function DateRangePicker({
 }) {
   const [date, setDate] = React.useState<DateRange | undefined>(() => {
     if (value) return value;
-    const to = new Date();
-    const from = new Date();
-    from.setDate(to.getDate() - 30);
-    return { from, to };
+    const today = new Date();
+    const m = today.getMonth();
+    const fyStartYear = m < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
   });
+
+  const [startMonth, setStartMonth] = React.useState<number>(3); // Apr
+  const [startYear, setStartYear] = React.useState<number>(2026);
+  const [endMonth, setEndMonth] = React.useState<number>(2);   // Mar
+  const [endYear, setEndYear] = React.useState<number>(2027);
+
+  // Sync internal dropdown states when date range changes
+  React.useEffect(() => {
+    if (date?.from) {
+      setStartMonth(date.from.getMonth());
+      setStartYear(date.from.getFullYear());
+    }
+    if (date?.to) {
+      setEndMonth(date.to.getMonth());
+      setEndYear(date.to.getFullYear());
+    }
+  }, [date]);
 
   // Keep internal state in sync with external value prop if changed
   const lastExternalValue = React.useRef<string>("");
@@ -63,6 +83,21 @@ export function DateRangePicker({
     }
   }, [date]);
 
+  const applyMonthYearRange = (sMonth: number, sYear: number, eMonth: number, eYear: number) => {
+    const from = new Date(sYear, sMonth, 1);
+    const to = new Date(eYear, eMonth + 1, 0); // last day of end month
+    setDate({ from, to });
+  };
+
+  const monthsList = [
+    { name: "Jan", idx: 0 }, { name: "Feb", idx: 1 }, { name: "Mar", idx: 2 },
+    { name: "Apr", idx: 3 }, { name: "May", idx: 4 }, { name: "Jun", idx: 5 },
+    { name: "Jul", idx: 6 }, { name: "Aug", idx: 7 }, { name: "Sep", idx: 8 },
+    { name: "Oct", idx: 9 }, { name: "Nov", idx: 10 }, { name: "Dec", idx: 11 }
+  ];
+
+  const yearsList = [2027, 2026, 2025, 2024];
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -86,73 +121,59 @@ export function DateRangePicker({
             )}
           </span>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <div className="flex border-b">
-            <div className="flex flex-col gap-1 border-r p-3 w-[175px] bg-muted/20">
-               <span className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Presets</span>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 setDate({ from: d, to: d });
-               }}>Today</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 d.setDate(d.getDate() - 1);
-                 setDate({ from: d, to: d });
-               }}>Yesterday</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 d.setDate(d.getDate() - 6);
-                 setDate({ from: d, to: new Date() });
-               }}>Last 7 Days</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2 font-medium text-indigo-600" onClick={() => {
-                 const d = new Date();
-                 d.setDate(d.getDate() - 29);
-                 setDate({ from: d, to: new Date() });
-               }}>Last 30 Days</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 d.setDate(1);
-                 setDate({ from: d, to: new Date() });
-               }}>This Month</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const f = new Date();
-                 f.setMonth(f.getMonth() - 1);
-                 f.setDate(1);
-                 const t = new Date();
-                 t.setDate(0);
-                 setDate({ from: f, to: t });
-               }}>Last Month</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 const m = d.getMonth();
-                 let qStart = 0; let qEnd = 0;
-                 if (m >= 3 && m <= 5) { qStart = 3; qEnd = 5; }
-                 else if (m >= 6 && m <= 8) { qStart = 6; qEnd = 8; }
-                 else if (m >= 9 && m <= 11) { qStart = 9; qEnd = 11; }
-                 else { qStart = 0; qEnd = 2; }
-                 setDate({ from: new Date(d.getFullYear(), qStart, 1), to: new Date(d.getFullYear(), qEnd + 1, 0) });
-               }}>Financial Quarter</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 const m = d.getMonth();
-                 const fyStart = m < 3 ? d.getFullYear() - 1 : d.getFullYear();
-                 setDate({ from: new Date(fyStart, 3, 1), to: new Date(fyStart + 1, 2, 31) });
-               }}>Financial Year</Button>
-               <Button variant="ghost" className="justify-start text-xs h-8 px-2" onClick={() => {
-                 const d = new Date();
-                 const m = d.getMonth();
-                 const fyStart = (m < 3 ? d.getFullYear() - 1 : d.getFullYear()) - 1;
-                 setDate({ from: new Date(fyStart, 3, 1), to: new Date(fyStart + 1, 2, 31) });
-               }}>Prev Financial Year</Button>
-            </div>
-            <Calendar
-              autoFocus
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={setDate}
-              numberOfMonths={2}
-            />
+        <PopoverContent className="w-auto p-0 border border-slate-200 shadow-xl rounded-xl" align="end">
+          {/* Simple Clean Custom Range Selector */}
+          <div className="flex flex-col gap-3 p-4 w-[250px] bg-white rounded-xl">
+             <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">CUSTOM PERIOD (START → END)</span>
+             
+             {/* START PERIOD */}
+             <div>
+               <label className="text-[11px] font-semibold text-slate-500 block mb-1">START (Month, Year)</label>
+               <div className="flex gap-2">
+                 <select
+                   value={startMonth}
+                   onChange={(e) => setStartMonth(Number(e.target.value))}
+                   className="flex-1 text-xs border border-slate-300 rounded-md px-2 py-1.5 bg-white font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                 >
+                   {monthsList.map(m => <option key={m.idx} value={m.idx}>{m.name}</option>)}
+                 </select>
+                 <select
+                   value={startYear}
+                   onChange={(e) => setStartYear(Number(e.target.value))}
+                   className="w-20 text-xs border border-slate-300 rounded-md px-2 py-1.5 bg-white font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                 >
+                   {yearsList.map(y => <option key={y} value={y}>{y}</option>)}
+                 </select>
+               </div>
+             </div>
+
+             {/* END PERIOD */}
+             <div>
+               <label className="text-[11px] font-semibold text-slate-500 block mb-1">END (Month, Year)</label>
+               <div className="flex gap-2">
+                 <select
+                   value={endMonth}
+                   onChange={(e) => setEndMonth(Number(e.target.value))}
+                   className="flex-1 text-xs border border-slate-300 rounded-md px-2 py-1.5 bg-white font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                 >
+                   {monthsList.map(m => <option key={m.idx} value={m.idx}>{m.name}</option>)}
+                 </select>
+                 <select
+                   value={endYear}
+                   onChange={(e) => setEndYear(Number(e.target.value))}
+                   className="w-20 text-xs border border-slate-300 rounded-md px-2 py-1.5 bg-white font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                 >
+                   {yearsList.map(y => <option key={y} value={y}>{y}</option>)}
+                 </select>
+               </div>
+             </div>
+
+             <Button
+               className="w-full text-xs h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all mt-1"
+               onClick={() => applyMonthYearRange(startMonth, startYear, endMonth, endYear)}
+             >
+               Apply Date Range
+             </Button>
           </div>
         </PopoverContent>
       </Popover>

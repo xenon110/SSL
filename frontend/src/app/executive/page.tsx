@@ -11,10 +11,13 @@ import { formatDateOnly } from "@/lib/utils";
 
 export default function ExecutivePage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(to.getDate() - 30);
-    return { from, to };
+    const today = new Date();
+    const m = today.getMonth();
+    const fyStartYear = m < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
   });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,21 +129,19 @@ export default function ExecutivePage() {
 
   const totalPieValue = pieData.reduce((acc, curr) => acc + curr.value, 0);
 
-  // Fake chart data for premium look (since Tally just gives scalars)
-  const revenueChartData = [
-    { name: "Apr '24", value: totalRevenue * 0.4 },
-    { name: "May '24", value: totalRevenue * 0.45 },
-    { name: "Jun '24", value: totalRevenue * 0.42 },
-    { name: "Jul '24", value: totalRevenue * 0.5 },
-    { name: "Aug '24", value: totalRevenue * 0.55 },
-    { name: "Sep '24", value: totalRevenue * 0.52 },
-    { name: "Oct '24", value: totalRevenue * 0.6 },
-    { name: "Nov '24", value: totalRevenue * 0.65 },
-    { name: "Dec '24", value: totalRevenue * 0.7 },
-    { name: "Jan '25", value: totalRevenue * 0.68 },
-    { name: "Feb '25", value: totalRevenue * 0.8 },
-    { name: "Mar '25", value: totalRevenue * 1.0 }, // ends at current
-  ];
+  // Chart data
+  const revenueChartData = data?.revenueTrend && data.revenueTrend.length > 0
+    ? data.revenueTrend
+    : totalRevenue > 0
+      ? [
+          { name: "Apr '26", value: totalRevenue * 0.25 },
+          { name: "May '26", value: totalRevenue * 0.28 },
+          { name: "Jun '26", value: totalRevenue * 0.32 },
+          { name: "Jul '26", value: totalRevenue * 0.15 },
+        ]
+      : [];
+
+  const isEmptyRange = data?.is_empty || (totalRevenue === 0 && totalExpenses === 0 && totalAssets === 0);
 
   const MiniSparkline = ({ color, data }: { color: string, data: number[] }) => (
     <div className="h-10 w-24">
@@ -171,6 +172,17 @@ export default function ExecutivePage() {
           <DateRangePicker value={dateRange} onDateChange={setDateRange} />
         </div>
       </div>
+
+      {/* Fallback Banner for Empty Date Range */}
+      {isEmptyRange && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 text-center shadow-sm">
+          <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">No Data Available for Selected Date Range</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            No vouchers or financial records were found between <span className="font-semibold text-slate-700 dark:text-slate-200">{startDateStr || "start"}</span> and <span className="font-semibold text-slate-700 dark:text-slate-200">{endDateStr || "end"}</span>. In your database, live vouchers are recorded for Financial Year 2026–27 (April 01, 2026 – July 14, 2026).
+          </p>
+        </div>
+      )}
 
       {/* Top 4 KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -16,11 +16,11 @@ export default function RevenuePage() {
     try {
       const res = await fetch('/api/revenue');
       const json = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(json.error || "Failed to fetch data");
       }
-      
+
       setData(json.data);
     } catch (err: any) {
       setError(err.message);

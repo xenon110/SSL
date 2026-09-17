@@ -91,6 +91,9 @@ export async function GET(request: Request) {
     let maxDate: string | null = null;
 
     if (startDate || endDate) {
+      if (!periodVouchers || periodVouchers.length === 0) {
+        return NextResponse.json(getEmptyState());
+      }
       // Calculate dynamic period sales from vouchers
       (periodVouchers || []).forEach((row: any) => {
           const val = Number(row.amount) || 0;

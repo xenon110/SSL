@@ -28,7 +28,18 @@ interface GenericDashboardViewProps {
 }
 
 export function GenericDashboardView({ title, data = {}, onDateChange, isLoading }: GenericDashboardViewProps) {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const today = new Date();
+    const m = today.getMonth();
+    const fyStartYear = m < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
+
   const handleDatePickerChange = (range: DateRange | undefined) => {
+    setDateRange(range);
     if (range?.from && onDateChange) {
       const startStr = formatDateOnly(range.from);
       const endStr = range.to ? formatDateOnly(range.to) : startStr;
@@ -125,7 +136,7 @@ export function GenericDashboardView({ title, data = {}, onDateChange, isLoading
         </div>
 
         <div className="flex items-center gap-3">
-          <DateRangePicker onDateChange={handleDatePickerChange} />
+          <DateRangePicker value={dateRange} onDateChange={handleDatePickerChange} />
           {isLoading && (
             <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
               Syncing...
@@ -137,7 +148,22 @@ export function GenericDashboardView({ title, data = {}, onDateChange, isLoading
       <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700 fade-in fill-mode-both">
         
         {/* Metrics Row */}
-        {metrics.length > 0 && (
+        {/* Beautiful No Data Available Banner */}
+        {(Boolean((safeData as any).is_empty) || (metrics.length === 0 && lists.length === 0 && objects.length === 0)) && (
+          <div className="flex flex-col items-center justify-center p-12 my-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-full mb-4">
+              <CalendarIcon className="h-10 w-10 text-amber-500" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">
+              No Data Available for Selected Date Range
+            </h3>
+            <p className="text-sm text-slate-500 max-w-md mb-4">
+              There are no transactions or accounting records recorded in Tally for the chosen period. Please try selecting a different date range or Financial Year (e.g. FY 2026–27).
+            </p>
+          </div>
+        )}
+
+        {!((safeData as any).is_empty) && metrics.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric, i) => {
               const Icon = getIconForMetric(metric.key);

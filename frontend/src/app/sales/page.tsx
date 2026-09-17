@@ -21,10 +21,13 @@ import { formatDateOnly } from "@/lib/utils";
 
 export default function SalesDashboard() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(to.getDate() - 30);
-    return { from, to };
+    const today = new Date();
+    const m = today.getMonth();
+    const fyStartYear = m < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
   });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);

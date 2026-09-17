@@ -91,7 +91,6 @@ export default function BalanceSheetPage() {
   const netWorth = data["Net Worth"] || 0;
   const workingCapital = data["Working Capital"] || 0;
   const totalAssets = data["Total Assets"] || 0;
-  const totalLiabilities = data["Total Liabilities"] || 0;
 
   // Categorize breakdown items
   const assetKeywords = ["asset", "debtor", "cash", "bank", "stock", "investment", "deposit", "advance"];
@@ -119,10 +118,13 @@ export default function BalanceSheetPage() {
     } 
     // Fallback
     else {
-      // Typically if it's negative it might be a liability, but standard tally dumps are absolute. We'll put it in others.
       otherList.push({ name: key, amount: Math.abs(amt) });
     }
   });
+
+  const totalLiabilities = (data["Total Liabilities"] && Number(data["Total Liabilities"]) > 0)
+    ? Number(data["Total Liabilities"])
+    : liabilitiesList.reduce((acc, curr) => acc + curr.amount, 0);
 
   // Sort by amount descending
   assetsList.sort((a, b) => b.amount - a.amount);
