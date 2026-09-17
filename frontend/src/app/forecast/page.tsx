@@ -18,12 +18,16 @@ export default function ForecastPage() {
       if (startDate) url.searchParams.append('startDate', startDate);
       if (endDate) url.searchParams.append('endDate', endDate);
       const res = await fetch(url.toString());
-      const json = await res.json();
-      
       if (!res.ok) {
-        throw new Error(json.error || "Failed to fetch data");
+        const text = await res.text().catch(() => "");
+        let errMsg = "Failed to fetch data";
+        try {
+          const errJson = JSON.parse(text);
+          errMsg = errJson.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
       }
-      
+      const json = await res.json();
       setData(json.data);
     } catch (err: any) {
       setError(err.message);
@@ -36,7 +40,7 @@ export default function ForecastPage() {
     fetchMetrics();
   }, []);
 
-  if (isLoading) return <GenericDashboardSkeleton />;
+  if (isLoading && !data) return <GenericDashboardSkeleton />;
 
   if (error || !data) {
     return (

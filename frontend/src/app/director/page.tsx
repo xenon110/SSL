@@ -141,6 +141,7 @@ export default function DirectorPage() {
           <p className="text-xs font-medium text-slate-500 mt-0.5">Corporate Financial Overview • YTD</p>
         </div>
         <div className="flex items-center gap-2">
+          <DateRangePicker value={dateRange} onDateChange={setDateRange} />
           <button className="p-1.5 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
             <Download className="h-4 w-4" />
           </button>

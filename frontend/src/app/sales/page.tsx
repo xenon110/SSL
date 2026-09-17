@@ -379,6 +379,7 @@ export default function SalesDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <DateRangePicker value={dateRange} onDateChange={setDateRange} />
           <a
             href={predictionUrl}
             target="_blank"

@@ -59,44 +59,81 @@ export async function GET(request: Request) {
     if (startDate) salesQuery = salesQuery.gte('date', startDate);
     if (endDate) salesQuery = salesQuery.lte('date', endDate);
 
+    let vQuery = supabase.from('vouchers')
+      .select('date, amount, party_ledger_name, voucher_type_name')
+      .eq('company_id', comp.id)
+      .eq('is_cancelled', false)
+      .eq('is_deleted', false)
+      .ilike('voucher_type_name', '%sales%');
+    if (startDate) vQuery = vQuery.gte('date', startDate);
+    if (endDate) vQuery = vQuery.lte('date', endDate);
+
     const [
       { data: dailySales },
       { data: productSales },
       { data: regionSales },
-      { data: customerSales }
+      { data: customerSales },
+      { data: periodVouchers }
     ] = await Promise.all([
       fetchAllData(salesQuery),
       fetchAllData(supabase.from('mv_product_sales').select('*').eq('company_id', comp.id)),
       fetchAllData(supabase.from('mv_region_sales').select('*').eq('company_id', comp.id)),
-      fetchAllData(supabase.from('mv_customer_sales').select('*').eq('company_id', comp.id))
+      fetchAllData(supabase.from('mv_customer_sales').select('*').eq('company_id', comp.id)),
+      (startDate || endDate) ? fetchAllData(vQuery) : Promise.resolve({ data: null })
     ]);
 
     let grossSales = 0;
     let totalReturns = 0;
     const timeBuckets: Record<string, { label: string, sortKey: number, sales: number }> = {};
+    const customerMap: Record<string, number> = {};
     
     let minDate: string | null = null;
     let maxDate: string | null = null;
 
-    (dailySales || []).forEach((row: any) => {
-        const val = Number(row.total_sales) || 0;
-        grossSales += val;
-        
-        if (!minDate || row.date < minDate) minDate = row.date;
-        if (!maxDate || row.date > maxDate) maxDate = row.date;
+    if (startDate || endDate) {
+      // Calculate dynamic period sales from vouchers
+      (periodVouchers || []).forEach((row: any) => {
+          const val = Number(row.amount) || 0;
+          grossSales += val;
+          
+          if (row.party_ledger_name) {
+            customerMap[row.party_ledger_name] = (customerMap[row.party_ledger_name] || 0) + val;
+          }
 
-        const bucket = getTimeBucket(row.date, startDate, endDate);
-        if (!timeBuckets[bucket.label]) {
-          timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, sales: 0 };
-        }
-        timeBuckets[bucket.label].sales += val;
-    });
+          const bucket = getTimeBucket(row.date, startDate, endDate);
+          if (!timeBuckets[bucket.label]) {
+            timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, sales: 0 };
+          }
+          timeBuckets[bucket.label].sales += val;
+      });
+    } else {
+      (dailySales || []).forEach((row: any) => {
+          const val = Number(row.total_sales) || 0;
+          grossSales += val;
+          
+          if (!minDate || row.date < minDate) minDate = row.date;
+          if (!maxDate || row.date > maxDate) maxDate = row.date;
+
+          const bucket = getTimeBucket(row.date, startDate, endDate);
+          if (!timeBuckets[bucket.label]) {
+            timeBuckets[bucket.label] = { label: bucket.label, sortKey: bucket.sortKey, sales: 0 };
+          }
+          timeBuckets[bucket.label].sales += val;
+      });
+    }
 
     const timeBucketsArr = Object.values(timeBuckets).sort((a, b) => a.sortKey - b.sortKey).map(t => ({ month: t.label, sales: t.sales }));
 
-    const topCustomersArr = (customerSales || [])
-      .map((c: any) => ({ name: c.customer_name, sales: Number(c.total_sales), value: Number(c.total_sales), lastTxDate: c.last_tx_date }))
-      .sort((a: any, b: any) => b.sales - a.sales);
+    let topCustomersArr: any[] = [];
+    if (startDate || endDate) {
+      topCustomersArr = Object.entries(customerMap)
+        .map(([name, sales]) => ({ name, sales, value: sales }))
+        .sort((a, b) => b.sales - a.sales);
+    } else {
+      topCustomersArr = (customerSales || [])
+        .map((c: any) => ({ name: c.customer_name, sales: Number(c.total_sales), value: Number(c.total_sales), lastTxDate: c.last_tx_date }))
+        .sort((a: any, b: any) => b.sales - a.sales);
+    }
 
     const churnedCustomers = topCustomersArr
       .filter((c: any) => {

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const decodedName = decodeURIComponent(activeCompany);
     const companySearchTerm = decodedName.split(' - ')[0].trim();
     
-    const { data: comp } = await supabase.from('companies').select('id').eq('name', decodedName).single();
+    const { data: comp } = await supabase.from('companies').select('id').ilike('name', `%${companySearchTerm}%`).limit(1).maybeSingle();
     if (!comp) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     const companyId = comp.id;
 
@@ -34,7 +34,8 @@ export async function GET(request: Request) {
       .select('metrics_data')
       .eq('company_id', companyId)
       .eq('dashboard_name', 'Executive Summary')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     metricsData = mData;
     pnl = mData?.metrics_data || {};

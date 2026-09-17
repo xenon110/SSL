@@ -10,15 +10,30 @@ import { Button } from "@/components/ui/button";
 import { formatDateOnly } from "@/lib/utils";
 
 export default function ExecutivePage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 30);
+    return { from, to };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const startDateStr = dateRange?.from ? formatDateOnly(dateRange.from) : "";
+  const endDateStr = dateRange?.to ? formatDateOnly(dateRange.to) : "";
 
   const fetchMetrics = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/executive');
+      let url = '/api/executive';
+      const params = new URLSearchParams();
+      if (startDateStr) params.append('startDate', startDateStr);
+      if (endDateStr) params.append('endDate', endDateStr);
+      if (params.toString()) url += '?' + params.toString();
+
+      const res = await fetch(url);
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || 'Failed to fetch metrics');
@@ -35,7 +50,7 @@ export default function ExecutivePage() {
 
   useEffect(() => {
     fetchMetrics();
-  }, []);
+  }, [startDateStr, endDateStr]);
 
   if (isLoading) {
     return (
@@ -151,6 +166,9 @@ export default function ExecutivePage() {
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <p className="text-sm font-medium text-slate-500">Live Intelligence Board</p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <DateRangePicker value={dateRange} onDateChange={setDateRange} />
         </div>
       </div>
 

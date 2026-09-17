@@ -124,11 +124,14 @@ export function GenericDashboardView({ title, data = {}, onDateChange, isLoading
           </div>
         </div>
 
-        {isLoading && (
-          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
-            Syncing...
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          <DateRangePicker onDateChange={handleDatePickerChange} />
+          {isLoading && (
+            <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
+              Syncing...
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700 fade-in fill-mode-both">

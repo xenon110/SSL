@@ -270,6 +270,9 @@ export default function PurchaseDashboard() {
             </button>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+          <DateRangePicker value={dateRange} onDateChange={setDateRange} />
+        </div>
       </div>
 
       {(isLoading || !data) ? (

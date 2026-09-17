@@ -49,11 +49,13 @@ export function DateRangePicker({
   }, [onDateChange]);
 
   // Notify parent only when date range value actually changes
-  const lastNotifiedValue = React.useRef<string>("");
+  const initialKey = date?.from ? `${formatDateOnly(date.from)}_${date.to ? formatDateOnly(date.to) : formatDateOnly(date.from)}` : "";
+  const lastNotifiedValue = React.useRef<string>(initialKey);
+
   React.useEffect(() => {
     if (!date?.from) return;
     const currentKey = `${formatDateOnly(date.from)}_${date.to ? formatDateOnly(date.to) : formatDateOnly(date.from)}`;
-    if (currentKey !== lastNotifiedValue.current) {
+    if (lastNotifiedValue.current !== currentKey) {
       lastNotifiedValue.current = currentKey;
       if (onDateChangeRef.current) {
         onDateChangeRef.current(date);
