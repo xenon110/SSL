@@ -334,13 +334,32 @@ export async function GET(request: Request) {
         
       case 'working-capital':
         const wcBreakdown = metricsData?.metrics_data?.["BS Breakdown"] || {};
+        let wcAssets = wcBreakdown["Current Assets"] || 0;
+        let wcLiabilities = wcBreakdown["Current Liabilities"] || 0;
+        let wcCap = pnl["Working Capital"] || 0;
+        let wcRec = wcBreakdown["Sundry Debtors"] || totalAR;
+        let wcPay = wcBreakdown["Sundry Creditors"] || totalAP;
+        let wcCash = pnl["Cash in Bank"] || 0;
+
+        if (startDate || endDate) {
+          const rev = pnl["Total Revenue"] || 0;
+          const exp = pnl["Total Expenses"] || 0;
+          const profit = rev - exp;
+          wcCap = (basePnl["Working Capital"] || 0) + profit;
+          if (rev > 0) wcRec = rev;
+          if (exp > 0) wcPay = exp;
+          wcCash = (basePnl["Cash in Bank"] || 0) + (dynamicCashIn - dynamicCashOut);
+          wcAssets = wcRec + (wcCash > 0 ? wcCash : 0);
+          wcLiabilities = wcPay;
+        }
+
         data = {
-          "Current Assets": wcBreakdown["Current Assets"] || 0,
-          "Current Liabilities": wcBreakdown["Current Liabilities"] || 0,
-          "Working Capital": pnl["Working Capital"] || 0,
-          "Receivables": wcBreakdown["Sundry Debtors"] || totalAR,
-          "Payables": wcBreakdown["Sundry Creditors"] || totalAP,
-          "Cash Balance": pnl["Cash in Bank"] || 0
+          "Current Assets": wcAssets,
+          "Current Liabilities": wcLiabilities,
+          "Working Capital": wcCap,
+          "Receivables": wcRec,
+          "Payables": wcPay,
+          "Cash Balance": wcCash
         };
         break;
         
@@ -402,21 +421,38 @@ export async function GET(request: Request) {
       case 'investor':
       case 'director':
         const dirBreakdown = metricsData?.metrics_data?.["BS Breakdown"] || {};
+        let dirNetWorth = pnl["Net Worth"] || 0;
+        let dirWorkingCap = pnl["Working Capital"] || 0;
+        let dirReceivables = dirBreakdown["Sundry Debtors"] || totalAR;
+        let dirPayables = dirBreakdown["Sundry Creditors"] || totalAP;
+        let dirCashBalance = pnl["Cash in Bank"] || 0;
+
+        if (startDate || endDate) {
+          const rev = pnl["Total Revenue"] || 0;
+          const exp = pnl["Total Expenses"] || 0;
+          const profit = rev - exp;
+          dirNetWorth = (basePnl["Net Worth"] || 0) + profit;
+          dirWorkingCap = (basePnl["Working Capital"] || 0) + profit;
+          if (rev > 0) dirReceivables = rev;
+          if (exp > 0) dirPayables = exp;
+          dirCashBalance = (basePnl["Cash in Bank"] || 0) + (dynamicCashIn - dynamicCashOut);
+        }
+
         data = {
           "Total Revenue": pnl["Total Revenue"] || 0,
           "Total Expenses": pnl["Total Expenses"] || 0,
           "EBITDA": pnl["EBITDA"] || 0,
           "Net Profit": pnl["Net Profit"] || 0,
           "Debt-Equity Ratio": pnl["Debt-Equity Ratio"] || 0,
-          "Net Worth": pnl["Net Worth"] || 0,
-          "Working Capital": pnl["Working Capital"] || 0,
-          "Cash Balance": pnl["Cash in Bank"] || 0,
-          "Receivables": dirBreakdown["Sundry Debtors"] || totalAR,
-          "Payables": dirBreakdown["Sundry Creditors"] || totalAP,
+          "Net Worth": dirNetWorth,
+          "Working Capital": dirWorkingCap,
+          "Cash Balance": dirCashBalance,
+          "Receivables": dirReceivables,
+          "Payables": dirPayables,
           
           "Capital Structure": {
-             "Total Equity": pnl["Net Worth"] || 0,
-             "Total Debt": pnl["Debt-Equity Ratio"] ? (pnl["Net Worth"] * pnl["Debt-Equity Ratio"]) : 0
+             "Total Equity": dirNetWorth,
+             "Total Debt": pnl["Debt-Equity Ratio"] ? (dirNetWorth * pnl["Debt-Equity Ratio"]) : 0
           },
           
           "Profitability Overview": {
@@ -578,14 +614,45 @@ export async function GET(request: Request) {
       case 'balance-sheet':
         const bsDataBS = metricsData?.metrics_data || {};
         const bsBreakdownBS = bsDataBS["BS Breakdown"] || {};
+
+        let bsNetWorth = bsDataBS["Net Worth"] || 0;
+        let bsTotalAssets = bsDataBS["Total Assets"] || 0;
+        let bsTotalLiabilities = bsDataBS["Total Liabilities"] || 0;
+        let bsWorkingCap = bsDataBS["Working Capital"] || 0;
+
+        if (startDate || endDate) {
+          const rev = pnl["Total Revenue"] || 0;
+          const exp = pnl["Total Expenses"] || 0;
+          const profit = rev - exp;
+
+          bsNetWorth += profit;
+          bsWorkingCap += profit;
+          if (rev > 0) bsTotalAssets += rev;
+          if (exp > 0) bsTotalLiabilities += exp;
+        }
+
         data = {
-          "Net Worth": bsDataBS["Net Worth"] || 0,
-          "Total Assets": bsDataBS["Total Assets"] || 0,
-          "Total Liabilities": bsDataBS["Total Liabilities"] || 0,
-          "Working Capital": bsDataBS["Working Capital"] || 0,
+          "Net Worth": bsNetWorth,
+          "Total Assets": bsTotalAssets,
+          "Total Liabilities": bsTotalLiabilities,
+          "Working Capital": bsWorkingCap,
         };
+
         Object.entries(bsBreakdownBS).forEach(([name, amount]) => {
-          data[name] = amount;
+          let amt = Number(amount) || 0;
+          if (startDate || endDate) {
+            const rev = pnl["Total Revenue"] || 0;
+            const exp = pnl["Total Expenses"] || 0;
+            const lowerName = name.toLowerCase();
+            if (lowerName.includes('debtor') || lowerName.includes('sales')) {
+              if (rev > 0) amt = rev;
+            } else if (lowerName.includes('creditor') || lowerName.includes('purchase')) {
+              if (exp > 0) amt = exp;
+            } else if (lowerName.includes('profit') || lowerName.includes('surplus') || lowerName.includes('reserve')) {
+              amt += (rev - exp);
+            }
+          }
+          data[name] = amt;
         });
         break;
 

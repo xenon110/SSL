@@ -4,11 +4,25 @@ import React, { useEffect, useState } from "react";
 import { GenericDashboardView, GenericDashboardSkeleton } from "@/components/layout/GenericDashboardView";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateRange } from "react-day-picker";
+import { formatDateOnly } from "@/lib/utils";
 
 export default function InvestorPage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const today = new Date();
+    const m = today.getMonth();
+    const fyStartYear = m < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    return {
+      from: new Date(fyStartYear, 3, 1),
+      to: new Date(fyStartYear + 1, 2, 31)
+    };
+  });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const startDateStr = dateRange?.from ? formatDateOnly(dateRange.from) : "";
+  const endDateStr = dateRange?.to ? formatDateOnly(dateRange.to) : "";
 
   const fetchMetrics = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
@@ -37,8 +51,8 @@ export default function InvestorPage() {
   };
 
   useEffect(() => {
-    fetchMetrics();
-  }, []);
+    fetchMetrics(startDateStr, endDateStr);
+  }, [startDateStr, endDateStr]);
 
   if (isLoading && !data) return <GenericDashboardSkeleton />;
 
@@ -51,7 +65,7 @@ export default function InvestorPage() {
           <p className="text-slate-600 mb-6 text-sm">
             {error || "Your Tally sync agent hasn't pushed the data to the database yet. Please ensure the sync script is running."}
           </p>
-          <Button onClick={() => fetchMetrics()} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={() => fetchMetrics(startDateStr, endDateStr)} className="bg-indigo-600 hover:bg-indigo-700">
             <RefreshCw className="w-4 h-4 mr-2" /> Check Again
           </Button>
         </div>
@@ -61,7 +75,13 @@ export default function InvestorPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <GenericDashboardView title="Investor Dashboard" data={data} onDateChange={(start, end) => fetchMetrics(start, end)} isLoading={isLoading} />
+      <GenericDashboardView 
+        title="Investor Dashboard" 
+        data={data} 
+        dateRange={dateRange}
+        onDateChange={(start, end) => fetchMetrics(start, end)} 
+        isLoading={isLoading} 
+      />
     </div>
   );
 }

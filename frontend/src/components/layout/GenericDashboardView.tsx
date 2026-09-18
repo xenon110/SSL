@@ -25,10 +25,12 @@ interface GenericDashboardViewProps {
   data?: Record<string, any>;
   onDateChange?: (startDate: string, endDate: string) => void;
   isLoading?: boolean;
+  dateRange?: DateRange;
 }
 
-export function GenericDashboardView({ title, data = {}, onDateChange, isLoading }: GenericDashboardViewProps) {
+export function GenericDashboardView({ title, data = {}, onDateChange, isLoading, dateRange: externalDateRange }: GenericDashboardViewProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    if (externalDateRange) return externalDateRange;
     const today = new Date();
     const m = today.getMonth();
     const fyStartYear = m < 3 ? today.getFullYear() - 1 : today.getFullYear();
@@ -37,6 +39,8 @@ export function GenericDashboardView({ title, data = {}, onDateChange, isLoading
       to: new Date(fyStartYear + 1, 2, 31)
     };
   });
+
+  const activeDateRange = externalDateRange !== undefined ? externalDateRange : dateRange;
 
   const handleDatePickerChange = (range: DateRange | undefined) => {
     setDateRange(range);
@@ -136,7 +140,7 @@ export function GenericDashboardView({ title, data = {}, onDateChange, isLoading
         </div>
 
         <div className="flex items-center gap-3">
-          <DateRangePicker value={dateRange} onDateChange={handleDatePickerChange} />
+          <DateRangePicker value={activeDateRange} onDateChange={handleDatePickerChange} />
           {isLoading && (
             <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
               Syncing...

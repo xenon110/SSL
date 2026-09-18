@@ -122,8 +122,58 @@ export function DateRangePicker({
           </span>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 border border-slate-200 shadow-xl rounded-xl" align="end">
-          {/* Simple Clean Custom Range Selector */}
-          <div className="flex flex-col gap-3 p-4 w-[250px] bg-white rounded-xl">
+          {/* Quick Presets & Custom Range Selector */}
+          <div className="flex flex-col gap-3 p-4 w-[260px] bg-white rounded-xl">
+             <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">QUICK MONTH PRESETS</span>
+             <div className="grid grid-cols-2 gap-1.5">
+               <Button
+                 variant="outline"
+                 size="sm"
+                 className="text-[11px] h-7 px-2 justify-start font-medium"
+                 onClick={() => setDate({
+                   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                   to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+                 })}
+               >
+                 This Month
+               </Button>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 className="text-[11px] h-7 px-2 justify-start font-medium"
+                 onClick={() => setDate({
+                   from: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+                   to: new Date(new Date().getFullYear(), new Date().getMonth(), 0)
+                 })}
+               >
+                 Last Month
+               </Button>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 className="text-[11px] h-7 px-2 justify-start font-medium"
+                 onClick={() => setDate({
+                   from: new Date(2026, 3, 1),
+                   to: new Date(2027, 2, 31)
+                 })}
+               >
+                 FY 2026-27
+               </Button>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 className="text-[11px] h-7 px-2 justify-start font-medium"
+                 onClick={() => setDate({
+                   from: new Date(2025, 3, 1),
+                   to: new Date(2026, 2, 31)
+                 })}
+               >
+                 FY 2025-26
+               </Button>
+             </div>
+
+             <div className="border-t border-slate-100 my-1"></div>
+
              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">CUSTOM PERIOD (START → END)</span>
              
              {/* START PERIOD */}

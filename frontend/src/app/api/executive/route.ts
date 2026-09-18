@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       });
 
       const netProfit = totalRevenue - totalExpenses;
-      const cashInBank = Math.max(0, cashIn - cashOut);
+
       const revenueTrend = Object.values(monthlyRevenue)
         .sort((a, b) => a.sortKey - b.sortKey)
         .map(item => ({ name: item.name, value: item.value }));
@@ -108,6 +108,10 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       const basePnl = metricsData?.metrics_data || {};
+      const baseNetWorth = Number(basePnl["Net Worth"]) || 1444106350.77;
+      const baseWorkingCap = Number(basePnl["Working Capital"]) || 392648904.67;
+      const baseAssets = Number(basePnl["Total Assets"]) || 658641405.80;
+
       const crVal = basePnl["Current Ratio"] ? Number(basePnl["Current Ratio"]).toFixed(2) : "3.69";
       const deVal = basePnl["Debt-Equity Ratio"] ? Number(basePnl["Debt-Equity Ratio"]).toFixed(2) : "0.02";
       const cashBankVal = Number(basePnl["Cash in Bank"]) || 249122169.95;
@@ -116,17 +120,21 @@ export async function GET(request: Request) {
       const qrVal = ((cashBankVal + arVal) / (apVal || 1)).toFixed(2);
       const capEmp = Number(basePnl["Capital Employed"]) || 512842066.29;
 
+      const netCashMovement = cashIn - cashOut;
+      const periodCashInBank = cashBankVal + netCashMovement;
+      const periodTotalAssets = baseAssets + netProfit;
+
       return NextResponse.json({
         data: {
-          "Total Assets": basePnl["Total Assets"] || 658641405.80,
-          "Cash in Bank": cashBankVal,
-          "Net Profit": netProfit !== 0 ? netProfit : (basePnl["Net Profit"] || -2247904.59),
-          "Net Worth": basePnl["Net Worth"] || 1444106350.77,
-          "Total Revenue": totalRevenue > 0 ? totalRevenue : (basePnl["Total Revenue"] || 299135869.00),
-          "Total Expenses": totalExpenses > 0 ? totalExpenses : (basePnl["Total Expenses"] || 301383773.59),
-          "Direct Expenses": directExpenses > 0 ? directExpenses : (basePnl["Direct Expenses"] || 24235576.66),
-          "Indirect Expenses": indirectExpenses > 0 ? indirectExpenses : (basePnl["Indirect Expenses"] || 10858873.11),
-          "Working Capital": basePnl["Working Capital"] || 392648904.67,
+          "Total Assets": periodTotalAssets,
+          "Cash in Bank": periodCashInBank,
+          "Net Profit": netProfit,
+          "Net Worth": baseNetWorth + netProfit,
+          "Total Revenue": totalRevenue,
+          "Total Expenses": totalExpenses,
+          "Direct Expenses": directExpenses,
+          "Indirect Expenses": indirectExpenses,
+          "Working Capital": baseWorkingCap + netProfit,
           "Accounts Payable": apVal,
           "Current Ratio": crVal,
           "Quick Ratio": qrVal,
