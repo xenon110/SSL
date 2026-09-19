@@ -30,6 +30,12 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
         setIsLoading(false);
+        // Dispatch security notification for failed login attempt
+        fetch("/api/auth/failed-attempt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, error: error.message }),
+        }).catch(() => {});
         return;
       }
 
